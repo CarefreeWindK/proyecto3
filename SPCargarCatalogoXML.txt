@@ -1,0 +1,186 @@
+USE [bd2]
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[CargarCatalogoXML]
+    @inPathXML NVARCHAR(512) -- Ruta del archivo XML
+AS 
+BEGIN
+    -- Declarar la variable de tabla para almacenar los datos del XML
+    DECLARE @TDITemp TABLE (
+        Nombre VARCHAR(32)
+        ,Formato VARCHAR(32)
+    )
+
+	DECLARE @TCTMTemp TABLE (
+        Nombre VARCHAR(32)
+    )
+
+	DECLARE @TRNTemp TABLE (
+        Nombre VARCHAR(64)
+		,Tipo VARCHAR(32)
+    )
+
+	DECLARE @RNTemp TABLE (
+        Nombre VARCHAR(64)
+		,TCTM VARCHAR(32)
+		,TRN VARCHAR(32)
+		,Valor VARCHAR(32)
+    )
+
+	DECLARE @MITTemp TABLE (
+        Nombre VARCHAR(32)
+    )
+
+	DECLARE @TMTemp TABLE (
+        Nombre VARCHAR(64)
+		,Accion VARCHAR(64)
+		,Acumula_Operacion_ATM VARCHAR(8)
+		,Acumula_Operacion_Ventana VARCHAR(8)
+    )
+
+	DECLARE @UATemp TABLE (
+        Nombre VARCHAR(64)
+		,Pin VARCHAR(64)
+    )
+
+	DECLARE @TMTITemp TABLE (
+        Nombre VARCHAR(64)
+		,Accion VARCHAR(16)
+    )
+
+    -- Cargar los datos del XML en la variable de tabla
+    DECLARE @XmlData XML
+    DECLARE @OpenRowsetCmd NVARCHAR(MAX)
+    SET @OpenRowsetCmd = 'SELECT @XmlData = CONVERT(XML, BulkColumn) FROM OPENROWSET(BULK ''' + @inPathXML + ''', SINGLE_BLOB) AS x'
+    EXEC sp_executesql @OpenRowsetCmd, N'@XmlData XML OUTPUT', @XmlData OUTPUT
+
+--------------------------------------------------------------------------------------------------
+    INSERT INTO @TDITemp (
+        Nombre
+        ,Formato
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+        ,T.X.value('@Formato', 'VARCHAR(32)') AS Formato
+    FROM @XmlData.nodes('/root/TDI/TDI') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @TCTMTemp (
+        Nombre
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+    FROM @XmlData.nodes('/root/TCTM/TCTM') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @TRNTemp (
+        Nombre
+        ,Tipo
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(64)') AS Nombre
+        ,T.X.value('@tipo', 'VARCHAR(32)') AS Tipo
+    FROM @XmlData.nodes('/root/TRN/TRN') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @RNTemp (
+        Nombre
+		,TCTM
+		,TRN
+        ,Valor
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(64)') AS Nombre
+        ,T.X.value('@TCTM', 'VARCHAR(32)') AS TCTM
+		,T.X.value('@TipoRN', 'VARCHAR(32)') AS TRN
+        ,T.X.value('@Valor', 'VARCHAR(32)') AS Valor
+    FROM @XmlData.nodes('/root/RN/RN') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @MITTemp (
+        Nombre
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+    FROM @XmlData.nodes('/root/MIT/MIT') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @TMTemp (
+        Nombre
+		,Accion 
+		,Acumula_Operacion_ATM 
+		,Acumula_Operacion_Ventana 
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(64)') AS Nombre
+        ,T.X.value('@Accion', 'VARCHAR(64)') AS Accion 
+		,T.X.value('@Acumula_Operacion_ATM ', 'VARCHAR(8)') AS Acumula_Operacion_ATM 
+        ,T.X.value('@Acumula_Operacion_Ventana', 'VARCHAR(8)') AS Acumula_Operacion_Ventana
+    FROM @XmlData.nodes('/root/TM/TM') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @UATemp (
+        Nombre
+		,Pin	
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+		, T.X.value('@Password', 'VARCHAR(32)') AS Pin
+    FROM @XmlData.nodes('/root/UA/Usuario') AS T(X)
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @TMTITemp (
+        Nombre
+		,Accion	
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(64)') AS Nombre
+		, T.X.value('@Accion', 'VARCHAR(16)') AS Accion
+    FROM @XmlData.nodes('/root/TMTI/TMTI') AS T(X)
+
+
+
+    -- Realizar operaciones en base a los datos de la variable de tabla
+    
+	SELECT 
+        Tipo = S.Nombre
+        ,S.Formato
+    FROM @TDITemp S
+
+	SELECT 
+		 S.Nombre  
+    FROM @TCTMTemp S
+
+	SELECT 
+         S.Nombre
+        ,S.Tipo
+    FROM @TRNTemp S
+
+	SELECT 
+         S.Nombre
+        ,S.TCTM
+		,S.TRN
+		,Valor
+    FROM @RNTemp S
+	 
+	SELECT 
+        S.Nombre
+    FROM @MITTemp S
+
+	SELECT 
+         Nombre 
+		,Accion 
+		,Acumula_Operacion_ATM 
+		,Acumula_Operacion_Ventana 
+    FROM @TMTemp S
+
+	SELECT 
+         S.Nombre 
+		,S.Pin
+    FROM @UATemp S
+
+	SELECT 
+         S.Nombre 
+		,S.Accion
+    FROM @TMTITemp S
+    -- Otras operaciones con la variable de tabla...
+END
+
