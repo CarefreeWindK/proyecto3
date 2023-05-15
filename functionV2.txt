@@ -1,0 +1,21 @@
+CREATE FUNCTION dbo.TCTMnombreToid (@inNombre VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TCTM A
+    WHERE A.Nombre = @inNombre;
+    RETURN @resultado;
+END;
+
+CREATE FUNCTION dbo.RNnombreToid (@inNombre VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM RN A
+    WHERE A.Nombre = @inNombre;
+    RETURN @resultado;
+END;
