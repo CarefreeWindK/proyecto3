@@ -1,0 +1,234 @@
+USE [bd2]
+GO
+/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 15/05/2023 9:34:15 am ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[CargarOperacionesXML]
+    @inPathXML NVARCHAR(512) -- Ruta del archivo XML
+AS 
+BEGIN
+    -- Declarar la variable de tabla para almacenar los datos del XML
+	DECLARE @ADMIN BIT = 1;
+
+    DECLARE @THTemp TABLE (
+        Nombre VARCHAR(32)
+        ,TipoDocIdentidad VARCHAR(32)
+		,ValorDocIdentidad VARCHAR(32)
+		,NombreUsuario VARCHAR(32)
+		,[Password] VARCHAR(32)
+    )
+
+	DECLARE @NTCMTemp TABLE (
+        Codigo VARCHAR(32)
+        ,TipoCTM VARCHAR(32)
+		,LimiteDeCredito VARCHAR(32)
+		,TH VARCHAR(32)
+		,FechaOperacion VARCHAR(512)
+    )
+	
+	DECLARE @NTCATemp TABLE (
+        CodigoTCM VARCHAR(32)
+        ,CodigoTCA VARCHAR(32)
+		,TH  VARCHAR(32)
+   )
+
+   DECLARE @NTFTemp TABLE (
+        Codigo VARCHAR(32)
+        ,TCAsociada VARCHAR(32)
+		,FechaVencimiento VARCHAR(32)
+		,CCV  VARCHAR(32)
+   )
+
+   DECLARE @MovimientoTemp TABLE (
+        Nombre VARCHAR(32)
+		,TF VARCHAR(32)
+        ,FechaMovimiento VARCHAR(32)
+		,Monto VARCHAR(32)
+		,Descripcion VARCHAR(32)
+		,Referencia VARCHAR(32)
+   )
+
+    -- Cargar los datos del XML en la variable de tabla
+    DECLARE @XmlData XML
+    DECLARE @OpenRowsetCmd NVARCHAR(MAX)
+    SET @OpenRowsetCmd = 'SELECT @XmlData = CONVERT(XML, BulkColumn) FROM OPENROWSET(BULK ''' + @inPathXML + ''', SINGLE_BLOB) AS x'
+    EXEC sp_executesql @OpenRowsetCmd, N'@XmlData XML OUTPUT', @XmlData OUTPUT
+
+--------------------------------------------------------------------------------------------------
+    INSERT INTO @THTemp (
+        Nombre
+        ,TipoDocIdentidad 
+		,ValorDocIdentidad 
+		,NombreUsuario 
+		,[Password]
+    )
+    SELECT 
+        T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+        ,T.X.value('@Tipo_Doc_Identidad', 'VARCHAR(32)') AS TipoDocIdentidad 
+		,T.X.value('@Valor_Doc_Identidad', 'VARCHAR(32)') AS ValorDocIdentidad 
+		,T.X.value('@NombreUsuario', 'VARCHAR(32)') AS NombreUsuario 
+		,T.X.value('@Password', 'VARCHAR(32)') AS [Password]
+    FROM @XmlData.nodes('/root/fechaOperacion/TH/TH') AS T(X)
+--------------------------------------------------------------------------------------------------
+    INSERT INTO @NTCMTemp  (
+         Codigo 
+        ,TipoCTM 
+		,LimiteDeCredito 
+		,TH
+		,FechaOperacion
+    )
+SELECT 
+    T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo,
+    T.X.value('@TipoCTM', 'VARCHAR(32)') AS TipoCTM,
+    T.X.value('@LimiteCredito', 'VARCHAR(32)') AS LimiteDeCredito,
+    T.X.value('@TH', 'VARCHAR(32)') AS TH,
+    A.B.value('@Fecha', 'VARCHAR(32)') AS FechaOperacion
+FROM @XmlData.nodes('/root/fechaOperacion/NTCM/NTCM') AS T(X)
+CROSS APPLY T.X.nodes('../..') AS A(B)
+
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @NTCATemp  (
+        CodigoTCM 
+        ,CodigoTCA 
+		,TH  
+    )
+    SELECT 
+        T.X.value('@CodigoTCM', 'VARCHAR(32)') AS CodigoTCM
+        ,T.X.value('@CodigoTCA', 'VARCHAR(32)') AS CodigoTCA
+		,T.X.value('@TH', 'VARCHAR(32)') AS TH
+    FROM @XmlData.nodes('/root/fechaOperacion/NTCA/NTCA') AS T(X)
+--------------------------------------------------------------------------------------------------
+    INSERT INTO @NTFTemp  (
+        Codigo
+        ,TCAsociada 
+		,FechaVencimiento 
+		,CCV 
+    )
+    SELECT 
+        T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
+        ,T.X.value('@TCAsociada', 'VARCHAR(32)') AS TCAsociada
+		,T.X.value('@FechaVencimiento', 'VARCHAR(32)') AS FechaVencimiento
+		,T.X.value('@CCV', 'VARCHAR(32)') AS CCV
+    FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
+--------------------------------------------------------------------------------------------------
+    INSERT INTO @MovimientoTemp  (
+        Nombre 
+		,TF 
+        ,FechaMovimiento 
+		,Monto
+		,Descripcion 
+		,Referencia 
+    )
+    SELECT 
+		T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+        ,T.X.value('@TF', 'VARCHAR(32)') AS TF
+        ,T.X.value('@FechaMovimiento ', 'VARCHAR(32)') AS FechaMovimiento
+		,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
+		,T.X.value('@Descripcion', 'VARCHAR(32)') AS Descripcion
+		,T.X.value('@Referencia ', 'VARCHAR(32)') AS Referencia
+    FROM @XmlData.nodes('/root/fechaOperacion/Movimiento/Movimiento') AS T(X)
+--------------------------------------------------------------------------------------------------
+    -- Realizar operaciones en base a los datos de la variable de tabla
+    
+  --INSERT INTO TH(
+		--Nombre
+		--,ValorDocIdentidad
+		--,IdTDTH
+		--)
+    SELECT 
+        S.Nombre
+		,S.ValorDocIdentidad
+        ,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
+    FROM @THTemp S
+
+	--INSERT INTO Usuario(
+	--	NombreUsuario
+	--	,EsAdmin
+	--	,Pin
+	--	)
+	 SELECT 
+        S.NombreUsuario
+		,0
+        ,S.[Password]
+    FROM @THTemp S
+
+	--UPDATE Usuario
+	--SET IdTH = TH.Id
+	--FROM TH
+	--INNER JOIN @THTemp temp ON temp.ValorDocIdentidad = TH.ValorDocIdentidad
+
+	--UPDATE TH
+	--SET IdUsuario = Usuario.Id
+	--FROM Usuario
+	--WHERE Usuario.IdTH = TH.Id
+--------------------------------------------------------------------------------------------------
+	--INSERT INTO CT(
+	--	EsMaestra
+	--	,Codigo
+	--	)
+	--SELECT
+	--	1
+	--	,T.codigo
+	--FROM @NTCMTemp T
+
+	--INSERT INTO CTM(
+	--	Saldo
+	--	,PagoMinimo
+	--	,SaldoCorteEC
+	--	,FechaCorte
+	--	,SaldoInteresesCorrientes
+	--	)
+	SELECT 
+         0
+		,0
+        ,S.Codigo
+		,S.FechaOperacion
+    FROM @NTCMTemp S
+--------------------------------------------------------------------------------------------------
+	--INSERT INTO CT(
+	--	EsMaestra
+	--	,PinCajero
+	--	)
+	SELECT
+		0
+		,T.CodigoTCA
+	FROM @NTCATemp T
+
+	--INSERT INTO CTA(
+	--	EsMaestra
+	--	,PinCajero
+	--	)
+	SELECT 
+         S.Codigo 
+        ,S.TipoCTM 
+		,S.LimiteDeCredito 
+		,S.TH
+    FROM @NTCMTemp S
+--------------------------------------------------------------------------------------------------
+	SELECT 
+         S.CodigoTCM
+        ,S.CodigoTCA
+		,S.TH
+    FROM @NTCATemp S
+
+	SELECT 
+         S.Codigo
+        ,S.TCAsociada
+		,S.FechaVencimiento
+		,S.CCV
+    FROM @NTFTemp S
+
+	SELECT 
+         S.Nombre
+        ,S.TF
+		,S.FechaMovimiento
+		,S.Monto
+		,S.Descripcion
+		,S.Referencia
+    FROM @MovimientoTemp S
+	
+	
+END
