@@ -1,16 +1,17 @@
 USE [bd2]
 GO
-
+/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 18/05/2023 3:04:13 pm ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [dbo].[CargarCatalogoXML]
+CREATE PROCEDURE [dbo].[CargarCatalogoXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
     -- Declarar la variable de tabla para almacenar los datos del XML
+	DECLARE @ADMIN BIT = 1;
     DECLARE @TDITemp TABLE (
         Nombre VARCHAR(32)
         ,Formato VARCHAR(32)
@@ -26,7 +27,8 @@ BEGIN
     )
 
 	DECLARE @RNTemp TABLE (
-        Nombre VARCHAR(64)
+		Id INT IDENTITY(1,1) 
+        ,Nombre VARCHAR(64)
 		,TCTM VARCHAR(32)
 		,TRN VARCHAR(32)
 		,Valor VARCHAR(32)
@@ -37,7 +39,8 @@ BEGIN
     )
 
 	DECLARE @TMTemp TABLE (
-        Nombre VARCHAR(64)
+		Id INT IDENTITY (1,1)
+        ,Nombre VARCHAR(64)
 		,Accion VARCHAR(64)
 		,Acumula_Operacion_ATM VARCHAR(8)
 		,Acumula_Operacion_Ventana VARCHAR(8)
@@ -140,31 +143,71 @@ BEGIN
 
     -- Realizar operaciones en base a los datos de la variable de tabla
     
-	SELECT 
+	INSERT INTO [dbo].[TipoDeTH]
+               (
+                [Tipo]
+               ,[Formato]
+               )/*Inserta en la tabla TipoDeTH*/
+    SELECT 
         Tipo = S.Nombre
         ,S.Formato
     FROM @TDITemp S
 
+	
+	
+	INSERT INTO [dbo].[TCTM]
+               (
+                [Nombre]
+               )/*Inserta en la tabla TCTM*/
 	SELECT 
 		 S.Nombre  
     FROM @TCTMTemp S
 
+
+
+	INSERT INTO [dbo].[TRN]
+               (
+                [Nombre]
+				,[Tipo]
+               )/*Inserta en la tabla TRN*/
 	SELECT 
          S.Nombre
         ,S.Tipo
     FROM @TRNTemp S
 
+
+
+	INSERT INTO [dbo].[RN]
+               (
+                [Nombre]
+				,[IdTCTM]
+				,[IdTRN]
+               )/*Inserta en la tabla RN*/
 	SELECT 
          S.Nombre
-        ,S.TCTM
-		,S.TRN
-		,Valor
+        ,dbo.TCTMnombreToid(S.TCTM) AS TCTM 
+		,dbo.RNnombreToid(S.TRN) AS TRN 
     FROM @RNTemp S
-	 
+	
+	
+	INSERT INTO [dbo].[MotivoInvalidacion]
+               (
+                [Nombre]
+               )/*Inserta en la tabla MotivoInvalidacion*/
 	SELECT 
         S.Nombre
     FROM @MITTemp S
 
+
+
+
+	INSERT INTO [dbo].[TM]
+               (
+                [Nombre]
+				,[Accion]
+				,[Acumula_Operacion_ATM]
+				,[Acumula_Operacion_Ventana]
+               )/*Inserta en la tabla TM*/
 	SELECT 
          Nombre 
 		,Accion 
@@ -172,15 +215,96 @@ BEGIN
 		,Acumula_Operacion_Ventana 
     FROM @TMTemp S
 
+
+	INSERT INTO [dbo].[Usuario]
+               (
+                [NombreUsuario]
+				,[Pin]
+				,[EsAdmin]
+               )/*Inserta en la tabla Usuario*/
 	SELECT 
          S.Nombre 
 		,S.Pin
+		,@ADMIN
     FROM @UATemp S
 
+
+	INSERT INTO [dbo].[TMTI]
+               (
+                [Nombre]
+				,[Accion]
+               )/*Inserta en la tabla TMTI*/
 	SELECT 
          S.Nombre 
 		,S.Accion
     FROM @TMTITemp S
-    -- Otras operaciones con la variable de tabla...
-END
 
+--------------------------------------------------------------------------------------------------
+INSERT INTO [dbo].[TCTXRN] (
+	[IdRN]
+	, [IdTCTM]
+	)
+SELECT 
+    RN.Id AS IdRN,
+    T.Id AS IdCTM
+FROM TCTM T
+INNER JOIN RN ON T.Id = RN.IdTCTM
+
+
+
+INSERT INTO [dbo].[TCTXRNTasa] (
+	[Id]
+	) 
+SELECT 
+	S.Id
+FROM TCTXRN S
+WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=1
+
+UPDATE TCTXRNTasa
+SET Tasa = RNTemp.Valor
+FROM TCTXRNTasa
+INNER JOIN @RNTemp AS RNTemp ON TCTXRNTasa.Id = RNTemp.Id
+WHERE RNTemp.TRN = 'Porcentaje';
+--------------------------------------------------------------------------------------------------
+INSERT INTO [dbo].[TCTXRNQDias] (
+	[Id]
+	) 
+SELECT 
+	S.Id
+FROM TCTXRN S
+WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=2
+
+UPDATE TCTXRNQDias
+SET QDias = RNTemp.Valor
+FROM TCTXRNQDias
+INNER JOIN @RNTemp AS RNTemp ON TCTXRNQDias.Id = RNTemp.Id
+WHERE RNTemp.TRN = 'Cantidad de Dias';
+--------------------------------------------------------------------------------------------------
+INSERT INTO [dbo].[TCTXRNQOP] (
+	[Id]
+	) 
+SELECT 
+	S.Id
+FROM TCTXRN S
+WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=3
+
+UPDATE TCTXRNQOP
+SET QOperaciones = RNTemp.Valor
+FROM TCTXRNQOP
+INNER JOIN @RNTemp AS RNTemp ON TCTXRNQOP.Id = RNTemp.Id
+WHERE RNTemp.TRN = 'Cantidad de Operaciones';
+--------------------------------------------------------------------------------------------------
+INSERT INTO [dbo].[TCTXRNMM] (
+	[Id]
+	) 
+SELECT 
+	S.Id
+FROM TCTXRN S
+WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=4
+
+UPDATE TCTXRNMM
+SET Monto = RNTemp.Valor
+FROM TCTXRNMM
+INNER JOIN @RNTemp AS RNTemp ON TCTXRNMM.Id = RNTemp.Id
+WHERE RNTemp.TRN = 'Monetario';
+END
