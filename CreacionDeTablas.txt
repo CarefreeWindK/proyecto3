@@ -1,114 +1,113 @@
-CREATE TABLE usuario
+CREATE TABLE dbo.Usuario
 (
     Id INT IDENTITY(1,1) PRIMARY KEY
-    ,Nombre VARCHAR(32)
-	,Pin VARCHAR(32)
-	,IdTH INT -- FK TH
+    ,NombreUsuario VARCHAR(32)
     ,EsAdmin BIT
+    ,Pin VARCHAR(32)
+    ,IdTH INT -- FK TH    
 )
-CREATE TABLE TipoDeTh
+
+CREATE TABLE dbo.TipoDeTH
 (
     Id INT IDENTITY(1,1) PRIMARY KEY
     ,Tipo VARCHAR(32)
-	,Formato VARCHAR(32)
+    ,Formato VARCHAR(32)
 )
 
-
-CREATE TABLE TH
+CREATE TABLE dbo.TH
 (
     Id INT IDENTITY(1,1) PRIMARY KEY
     ,Nombre VARCHAR(32)
-	,IdUsuario INT
+	,ValorDocIdentidad VARCHAR(32)
+	,IdUsuario INT --FK Usuario
 	,IdCTM INT  -- FK CTM
 	,IdCTA INT -- FK CTA
     ,IdTDTH INT -- FK TDTH
 )
 
-
-CREATE TABLE CTM
+CREATE TABLE dbo.CTM
 (
-    Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY    
-    , CodigoTCM INT NOT NULL -- Codigo de la tarjeta asociada
-	, IdTCT INT NOT NULL -- FK TCT
-    , IdTH INT NOT NULL -- FK TH
-    , IdCT INT NOT NULL -- FK CT
+    Id INT NOT NULL PRIMARY KEY  --
+	, Saldo INT
+	, PagoMinimo INT
+	, SaldoCorteEC INT
+	, FechaCorte DATE
+	, SaldoInteresesCorrientes INT
+      , IdTH INT NOT NULL -- FK TH
 	, IdCTA INT -- FK CTA
-	, IdEC INT NOT NULL -- FK CTA
-	, IdMS INT NOT NULL -- FK CTA
-	, IdMov INT NOT NULL -- FK CTA
+	, IdEC INT NOT NULL -- FK EC
+	, IdMS INT NOT NULL -- FK MS
+	, IdMov INT NOT NULL -- FK Mov
+	, IdTCTM INT NOT NULL -- FK TCTM
 );
 
 
-
-CREATE TABLE CTA
+CREATE TABLE dbo.TCTM
 (
-
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
-  , CodigoTCA INT NOT NULL -- Codigo de la tarjeta asociada
+  , Nombre VARCHAR (64)  
+  , IdTCTXRN INT NOT NULL -- FK TCTXRN
+);
+
+CREATE TABLE dbo.CTA
+(
+  Id INT NOT NULL PRIMARY KEY
   , IdTCM INT NOT NULL --FK CTM
   , IdTH INT NOT NULL -- FK TH
-  , IdCT INT NOT NULL -- FK CT
-
 );
 
-
-CREATE TABLE CT
+CREATE TABLE dbo.CT
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , EsMaestra BIT NOT NULL 
-  , Codigo INT NOT NULL -- Codigo de la tarjeta asociada
+  , Codigo INT NOT NULL -- Codigo de la tarjeta para usar el cajero
 );
-CREATE TABLE TF
+
+CREATE TABLE dbo.TF
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
-  ,Nombre VARCHAR(32)
-  ,FechaCaducacion VARCHAR(32)
+  , Nombre VARCHAR(32)
+  , FechaCaducacion VARCHAR(32)
   , CCV INT NOT NULL -- Codigo de la tarjeta asociada
   , Codigo INT NOT NULL -- Codigo de la tarjeta asociada
+  , IdCT INT  --FK CT
   , IdMI INT  --FK MI
   , IdMS INT  --FK MS
 );
 
-
-CREATE TABLE EC
+CREATE TABLE dbo.EC
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Fecha VARCHAR(32)
   ,IdMov INT NOT NULL --FK Movimiento
+  ,IdCTM INT NOT NULL --FK CTM
 );
 
-
-
-CREATE TABLE MovimientoSospechoso
+CREATE TABLE dbo.MovimientoSospechoso
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Monto INT NOT NULL
   ,Fecha VARCHAR(32)
   ,Descripcion VARCHAR(32)
   ,IdTF INT NOT NULL --FK TF
+  ,IdCTM INT NOT NULL --FK CTM
 );
 
-
-
-
-CREATE TABLE MotivoInvalidacion
+CREATE TABLE dbo.MotivoInvalidacion
 (
-
     Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
     , Nombre VARCHAR (64)
-
 );
-CREATE TABLE TMTI
-(
 
+CREATE TABLE dbo.TMTI
+(
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , Accion VARCHAR (16) --DEBITO O CREDITO
-
 );
-CREATE TABLE Movimiento
-(
 
+CREATE TABLE dbo.Movimiento
+(
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , Fecha DATE
@@ -117,113 +116,73 @@ CREATE TABLE Movimiento
   , Referencia VARCHAR (32)
   , IdTM INT --FK TM
   , IdTMTI INT --FK TMTI
-  
+  , IdCTM INT --FK CTM
 );
 
-
-
-CREATE TABLE RN
+CREATE TABLE dbo.RN
 (
-
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , IdTRN INT --FK TRN
-
+  , IdTCTM INT NOT NULL -- FK TCTM
 );
 
-
-
-CREATE TABLE TCTXRN
+CREATE TABLE dbo.TCTXRN
 (
-
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
-  , Nombre VARCHAR (64)  
   , IdRN INT --FK RN
-
+  , IdTCTM INT --FK TCTM
 );
 
-CREATE TABLE TRN
+CREATE TABLE dbo.TRN
 (
-
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , Tipo VARCHAR (32) --LIMITE
 );
 
-CREATE TABLE TCT
+
+CREATE TABLE dbo.TCTXRNQDias
 (
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
-  , Nombre VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
-);
-
-
-CREATE TABLE TCTXRNQDias
-(
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+  Id INT NOT NULL PRIMARY KEY
   , QDias VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
 );
 
-
-
-CREATE TABLE TCTXRNTasa
+CREATE TABLE dbo.TCTXRNTasa
 (
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+  Id INT NOT NULL PRIMARY KEY
   , Tasa VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
 );
 
-CREATE TABLE TCTXRNMM
+CREATE TABLE dbo.TCTXRNMM
 (
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+  Id INT NOT NULL PRIMARY KEY
   , Monto VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
 );
 
-
-CREATE TABLE TCTXRNQMes
-(
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+CREATE TABLE dbo.TCTXRNQMes
+( 
+  Id INT NOT NULL PRIMARY KEY
   , QMes VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
 );
 
-
-
-CREATE TABLE TCTXRNQOP
+CREATE TABLE dbo.TCTXRNQOP
 (
-
-  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+  Id INT NOT NULL PRIMARY KEY
   , QOperaciones VARCHAR (64)  
-  , IdTCTXRN INT -- FK TCTXRN
-
 );
 
-
-
-CREATE TABLE TM
+CREATE TABLE dbo.TM
 (
-
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , Accion VARCHAR (64)
   , Acumula_Operacion_ATM VARCHAR (8)
   , Acumula_Operacion_Ventana VARCHAR (8)
-
 );
 
-CREATE TABLE dbo.EventLog (
+CREATE TABLE dbo.EventLog 
+(
  Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY
  , LogDescription VARCHAR (2048) NOT NULL
  , PostIdUser INT NOT NULL
@@ -231,38 +190,19 @@ CREATE TABLE dbo.EventLog (
  , PostTime DATETIME NOT NULL
 );
 
-
-ALTER TABLE [dbo].[Usuario] WITH CHECK ADD CONSTRAINT
-[FK_Usuario_TH] FOREIGN KEY([IdTH])
-REFERENCES [dbo].[TH] ([id])
-
-
-
-ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
-[FK_TH_CTM] FOREIGN KEY([IdCTM])
-REFERENCES [dbo].[CTM] ([Id])
-
-ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
-[FK_TH_CTA] FOREIGN KEY([IdCTA])
-REFERENCES [dbo].[CTA] ([Id])
-
-ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
-[FK_TH_TipoDeTh] FOREIGN KEY([IdTDTH])
-REFERENCES [dbo].[TipoDeTh] ([Id])
-
-
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_TCT] FOREIGN KEY([IdTCT])
-REFERENCES [dbo].[TCT] ([id])
+[FK_CTM_CT] FOREIGN KEY([Id])
+REFERENCES [dbo].[CT] ([Id])
+
+ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
+[FK_CTM_TCTM] FOREIGN KEY([IdTCTM])
+REFERENCES [dbo].[TCTM] ([Id])
 
 ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
 [FK_CTM_TH] FOREIGN KEY([IdTH])
 REFERENCES [dbo].[TH] ([id])
-
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_CT] FOREIGN KEY([IdCT])
-REFERENCES [dbo].[CT] ([id])
 
 ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
 [FK_CTM_CTA] FOREIGN KEY([IdCTA])
@@ -279,9 +219,11 @@ REFERENCES [dbo].[MovimientoSospechoso] ([id])
 ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
 [FK_CTM_Movimiento] FOREIGN KEY([IdMov])
 REFERENCES [dbo].[Movimiento] ([id])
+-----------------------------------------------------------------------
 
-
-
+ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
+[FK_CTA_CT] FOREIGN KEY([Id])
+REFERENCES [dbo].[CT] ([Id])
 
 ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
 [FK_CTA_CTM] FOREIGN KEY([IdTCM])
@@ -292,12 +234,57 @@ ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
 [FK_CTA_TH] FOREIGN KEY([IdTH])
 REFERENCES [dbo].[TH] ([id])
 
+-----------------------------------------------------------------------
 
-ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
-[FK_CTA_CT] FOREIGN KEY([IdCT])
+ALTER TABLE [dbo].[Usuario] WITH CHECK ADD CONSTRAINT
+[FK_Usuario_TH] FOREIGN KEY([IdTH])
+REFERENCES [dbo].[TH] ([id])
+
+-----------------------------------------------------------------------
+
+ALTER TABLE [dbo].[TCTXRNQDias] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRNQDias_TCTXRN] FOREIGN KEY([Id])
+REFERENCES [dbo].[TCTXRN] ([Id])
+
+ALTER TABLE [dbo].[TCTXRNTasa] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRNTasa_TCTXRN] FOREIGN KEY([Id])
+REFERENCES [dbo].[TCTXRN] ([Id])
+
+ALTER TABLE [dbo].[TCTXRNMM] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRNMM_TCTXRN] FOREIGN KEY([Id])
+REFERENCES [dbo].[TCTXRN] ([Id])
+
+ALTER TABLE [dbo].[TCTXRNQMes] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRNQMes_TCTXRN] FOREIGN KEY([Id])
+REFERENCES [dbo].[TCTXRN] ([Id])
+
+ALTER TABLE [dbo].[TCTXRNQOP] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRNQOP_TCTXRN] FOREIGN KEY([Id])
+REFERENCES [dbo].[TCTXRN] ([Id])
+
+-----------------------------------------------------------------------
+
+ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
+[FK_TH_CTM] FOREIGN KEY([IdCTM])
+REFERENCES [dbo].[CTM] ([Id])
+
+ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
+[FK_TH_CTA] FOREIGN KEY([IdCTA])
+REFERENCES [dbo].[CTA] ([Id])
+
+ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
+[FK_TH_TipoDeTh] FOREIGN KEY([IdTDTH])
+REFERENCES [dbo].[TipoDeTh] ([Id])
+
+ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
+[FK_TH_Usuario] FOREIGN KEY([IdUsuario])
+REFERENCES [dbo].[Usuario] ([Id])
+
+-----------------------------------------------------------------------
+
+ALTER TABLE [dbo].[TF] WITH CHECK ADD CONSTRAINT
+[FK_TF_CT] FOREIGN KEY([IdCT])
 REFERENCES [dbo].[CT] ([id])
-
-
 
 ALTER TABLE [dbo].[TF] WITH CHECK ADD CONSTRAINT
 [FK_TF_MotivoInvalidacion] FOREIGN KEY([IdMI])
@@ -307,21 +294,27 @@ ALTER TABLE [dbo].[TF] WITH CHECK ADD CONSTRAINT
 [FK_TF_MovimientoSospechoso] FOREIGN KEY([IdMS])
 REFERENCES [dbo].[MovimientoSospechoso] ([id])
 
-
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[EC] WITH CHECK ADD CONSTRAINT
 [FK_EC_Movimiento] FOREIGN KEY([IdMov])
 REFERENCES [dbo].[Movimiento] ([id])
 
+ALTER TABLE [dbo].[EC] WITH CHECK ADD CONSTRAINT
+[FK_EC_CTM] FOREIGN KEY([IdCTM])
+REFERENCES [dbo].[CTM] ([id])
 
-
-
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[MovimientoSospechoso] WITH CHECK ADD CONSTRAINT
 [FK_MovimientoSospechoso_TF] FOREIGN KEY([IdTF])
 REFERENCES [dbo].[TF] ([id])
 
+ALTER TABLE [dbo].[MovimientoSospechoso] WITH CHECK ADD CONSTRAINT
+[FK_MovimientoSospechoso_CTM] FOREIGN KEY([IdCTM])
+REFERENCES [dbo].[CTM] ([id])
 
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
 [FK_Movimiento_TM] FOREIGN KEY([IdTM])
@@ -331,42 +324,32 @@ ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
 [FK_Movimiento_TMTI] FOREIGN KEY([IdTMTI])
 REFERENCES [dbo].[TMTI] ([id])
 
+ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
+[FK_Movimiento_CTM] FOREIGN KEY([IdCTM])
+REFERENCES [dbo].[CTM] ([id])
 
-
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[RN] WITH CHECK ADD CONSTRAINT
 [FK_RN_TRN] FOREIGN KEY([IdTRN])
 REFERENCES [dbo].[TRN] ([id])
 
+ALTER TABLE [dbo].[RN] WITH CHECK ADD CONSTRAINT
+[FK_RN_TCTM] FOREIGN KEY([IdTCTM])
+REFERENCES [dbo].[TCTM] ([id])
 
+-----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[TCTXRN] WITH CHECK ADD CONSTRAINT
 [FK_TCTXRN_RN] FOREIGN KEY([IdRN])
 REFERENCES [dbo].[RN] ([id])
 
+ALTER TABLE [dbo].[TCTXRN] WITH CHECK ADD CONSTRAINT
+[FK_TCTXRN_TCTM] FOREIGN KEY([IdTCTM])
+REFERENCES [dbo].[TCTM] ([id])
 
-ALTER TABLE [dbo].[TCT] WITH CHECK ADD CONSTRAINT
-[FK_TCT_TCTXRN] FOREIGN KEY([IdTCTXRN])
-REFERENCES [dbo].[TCTXRN] ([id])
+-----------------------------------------------------------------------
 
-ALTER TABLE [dbo].[TCTXRNQDias] WITH CHECK ADD CONSTRAINT
-[FK_TCTXRNQDias_TCTXRN] FOREIGN KEY([IdTCTXRN])
-REFERENCES [dbo].[TCTXRN] ([id])
-
-ALTER TABLE [dbo].[TCTXRNTasa] WITH CHECK ADD CONSTRAINT
-[FK_TCTXRNTasa_TCTXRN] FOREIGN KEY([IdTCTXRN])
-REFERENCES [dbo].[TCTXRN] ([id])
-
-
-ALTER TABLE [dbo].[TCTXRNMM] WITH CHECK ADD CONSTRAINT
-[FK_TCTXRNMM_TCTXRN] FOREIGN KEY([IdTCTXRN])
-REFERENCES [dbo].[TCTXRN] ([id])
-
-
-ALTER TABLE [dbo].[TCTXRNQMes] WITH CHECK ADD CONSTRAINT
-[FK_TCTXRNQMes_TCTXRN] FOREIGN KEY([IdTCTXRN])
-REFERENCES [dbo].[TCTXRN] ([id])
-
-ALTER TABLE [dbo].[TCTXRNQOP] WITH CHECK ADD CONSTRAINT
-[FK_TCTXRNQOP_TCTXRN] FOREIGN KEY([IdTCTXRN])
+ALTER TABLE [dbo].[TCTM] WITH CHECK ADD CONSTRAINT
+[FK_TCTM_TCTXRN] FOREIGN KEY([IdTCTXRN])
 REFERENCES [dbo].[TCTXRN] ([id])
