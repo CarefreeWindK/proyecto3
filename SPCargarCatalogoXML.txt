@@ -306,5 +306,5 @@ UPDATE TCTXRNMM
 SET Monto = RNTemp.Valor
 FROM TCTXRNMM
 INNER JOIN @RNTemp AS RNTemp ON TCTXRNMM.Id = RNTemp.Id
-WHERE RNTemp.TRN = 'Monetario';
+WHERE RNTemp.TRN = 'Monto Monetario';
 END
