@@ -15,7 +15,7 @@ AS
 BEGIN
     DECLARE @resultado INT;
     SELECT @resultado = A.Id
-    FROM RN A
+    FROM TRN A
     WHERE A.Nombre = @inNombre;
     RETURN @resultado;
 END;
