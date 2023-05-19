@@ -1,7 +1,7 @@
 CREATE PROCEDURE dbo.nuevoUsuarioXML
 	@inNombre VARCHAR
 	,@inPassword VARCHAR
-	@outResultCode INT
+	,@outResultCode INT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -23,7 +23,7 @@ BEGIN
 
 	SET @outResultCode=50001; -- error 
 	END CATCH
-	SET NOCOUTN OFF;
+	SET NOCOUNT OFF;
 END
 
 CREATE FUNCTION dbo.TDTHnombreToid (@inNombre VARCHAR(32))
