@@ -1,0 +1,46 @@
+CREATE FUNCTION dbo.returnNUA (@inNUA INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @contador INT;
+    SET @Contador = (
+        SELECT COUNT(*)
+        FROM Usuario U
+        WHERE U.EsAdmin = @inNUA
+    );
+    RETURN @Contador;
+
+END;
+
+CREATE FUNCTION dbo.returnRNId (@inIdTCTM INT,@inNombreRegla VARCHAR(64))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id=U.Id
+    FROM RN U
+    WHERE U.IdTCTM = @inIdTCTM AND U.Nombre=@inNombreRegla
+    RETURN @Id;
+END;
+
+CREATE FUNCTION dbo.returnMontoTCTXRNMM (@inIdRN INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Valor VARCHAR(64);
+    SELECT @Valor=U.Monto
+    FROM TCTXRNMM U
+    WHERE U.Id = @inIdRN
+    RETURN @Valor;
+END;
+
+CREATE FUNCTION dbo.CodigoToTCM (@inCodigo VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id=U.Id
+    FROM CT U
+    WHERE U.Codigo = @inCodigo
+    RETURN @Id;
+END;
