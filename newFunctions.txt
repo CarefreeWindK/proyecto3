@@ -1,0 +1,126 @@
+CREATE FUNCTION dbo.returnNUA (@inNUA INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @contador INT;
+    SET @Contador = (
+        SELECT COUNT(*)
+        FROM Usuario U
+        WHERE U.EsAdmin = @inNUA
+    );
+    RETURN @Contador;
+
+END;
+
+CREATE FUNCTION dbo.returnRNId (@inIdTCTM INT,@inNombreRegla VARCHAR(64))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id=U.Id
+    FROM RN U
+    WHERE U.IdTCTM = @inIdTCTM AND U.Nombre=@inNombreRegla
+    RETURN @Id;
+END;
+
+CREATE FUNCTION dbo.returnMontoTCTXRNMM (@inIdRN INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Valor VARCHAR(64);
+    SELECT @Valor=U.Monto
+    FROM TCTXRNMM U
+    WHERE U.Id = @inIdRN
+    RETURN @Valor;
+END;
+
+CREATE FUNCTION dbo.CodigoToTC (@inCodigo VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id=U.Id
+    FROM CT U
+    WHERE U.Codigo = @inCodigo
+    RETURN @Id;
+END;
+CREATE FUNCTION dbo.TCTMnombreToid (@inNombre VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TCTM A
+    WHERE A.Nombre = @inNombre;
+    RETURN @resultado;
+END;
+
+CREATE FUNCTION dbo.RNnombreToid (@inNombre VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TRN A
+    WHERE A.Nombre = @inNombre;
+    RETURN @resultado;
+END;
+CREATE PROCEDURE dbo.nuevoUsuarioXML
+	@inNombre VARCHAR
+	,@inPassword VARCHAR
+	,@outResultCode INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	BEGIN TRY
+	
+		INSERT INTO dbo.Usuario
+			(
+			nombreUsuario
+			,Pin
+			)
+			VALUES(
+			@inNombre
+			,@inPassword
+			)
+			
+		
+	END TRY
+	BEGIN CATCH
+
+	SET @outResultCode=50001; -- error 
+	END CATCH
+	SET NOCOUNT OFF;
+END
+
+CREATE FUNCTION dbo.TDTHnombreToid (@inNombre VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TipoDeTH A
+    WHERE A.Tipo = @inNombre;
+    RETURN @resultado;
+END;
+
+CREATE FUNCTION dbo.VDTHToid (@inValorDocTH VARCHAR(32)) -- VDTH valor de tipo de TH
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TH A
+    WHERE A.ValorDocIdentidad = @inValorDocTH;
+    RETURN @resultado;
+END;
+CREATE FUNCTION [dbo].[THvalorDocToid] (@inValorDoc VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @resultado INT;
+    SELECT @resultado = A.Id
+    FROM TH A
+    WHERE A.ValorDocIdentidad = @inValorDoc;
+    RETURN @resultado;
+END;
