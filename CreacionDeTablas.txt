@@ -33,12 +33,12 @@ CREATE TABLE dbo.CTM
 	, SaldoCorteEC INT
 	, FechaCorte DATE
 	, SaldoInteresesCorrientes INT
-      , IdTH INT NOT NULL -- FK TH
+      , IdTH INT -- FK TH
 	, IdCTA INT -- FK CTA
-	, IdEC INT NOT NULL -- FK EC
-	, IdMS INT NOT NULL -- FK MS
-	, IdMov INT NOT NULL -- FK Mov
-	, IdTCTM INT NOT NULL -- FK TCTM
+	, IdEC INT  -- FK EC
+	, IdMS INT  -- FK MS
+	, IdMov INT  -- FK Mov
+	, IdTCTM INT  -- FK TCTM
 );
 
 
@@ -51,8 +51,8 @@ CREATE TABLE dbo.TCTM
 CREATE TABLE dbo.CTA
 (
   Id INT NOT NULL PRIMARY KEY
-  , IdTCM INT NOT NULL --FK CTM
-  , IdTH INT NOT NULL -- FK TH
+  , IdTCM INT --FK CTM
+  , IdTH INT -- FK TH
 );
 
 CREATE TABLE dbo.CT
@@ -78,8 +78,8 @@ CREATE TABLE dbo.EC
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Fecha VARCHAR(32)
-  ,IdMov INT NOT NULL --FK Movimiento
-  ,IdCTM INT NOT NULL --FK CTM
+  ,IdMov INT  --FK Movimiento
+  ,IdCTM INT  --FK CTM
 );
 
 CREATE TABLE dbo.MovimientoSospechoso
@@ -88,8 +88,8 @@ CREATE TABLE dbo.MovimientoSospechoso
   ,Monto INT NOT NULL
   ,Fecha VARCHAR(32)
   ,Descripcion VARCHAR(32)
-  ,IdTF INT NOT NULL --FK TF
-  ,IdCTM INT NOT NULL --FK CTM
+  ,IdTF INT  --FK TF
+  ,IdCTM INT --FK CTM
 );
 
 CREATE TABLE dbo.MotivoInvalidacion
@@ -123,7 +123,7 @@ CREATE TABLE dbo.RN
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
   , IdTRN INT --FK TRN
-  , IdTCTM INT NOT NULL -- FK TCTM
+  , IdTCTM INT -- FK TCTM
 );
 
 CREATE TABLE dbo.TCTXRN
@@ -346,4 +346,5 @@ REFERENCES [dbo].[RN] ([id])
 ALTER TABLE [dbo].[TCTXRN] WITH CHECK ADD CONSTRAINT
 [FK_TCTXRN_TCTM] FOREIGN KEY([IdTCTM])
 REFERENCES [dbo].[TCTM] ([id])
+
 
