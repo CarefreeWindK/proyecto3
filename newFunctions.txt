@@ -124,7 +124,7 @@ BEGIN
     WHERE A.ValorDocIdentidad = @inValorDoc;
     RETURN @resultado;
 END;
-CREATE FUNCTION dbo.nombreToidTM (@inNombre INT)
+CREATE FUNCTION dbo.nombreToidTM (@inNombre VARCHAR(64))
 RETURNS INT
 AS
 BEGIN
@@ -138,7 +138,7 @@ END;
 
 
 
-CREATE FUNCTION dbo.CodigoTFToTFId (@inCodigo INT)
+CREATE FUNCTION dbo.CodigoTFToTFId (@inCodigo VARCHAR(64))
 RETURNS INT
 AS
 BEGIN
