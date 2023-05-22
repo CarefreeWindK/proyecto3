@@ -108,7 +108,7 @@ CREATE TABLE dbo.Movimiento
   , Referencia VARCHAR (32)
   , IdTM INT --FK TM
   , IdTMTI INT --FK TMTI
-  , IdCTM INT --FK CTM
+  , IdTF INT --FK TF
 );
 
 CREATE TABLE dbo.RN
