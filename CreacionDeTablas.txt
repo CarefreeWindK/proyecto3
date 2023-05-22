@@ -20,8 +20,7 @@ CREATE TABLE dbo.TH
     ,Nombre VARCHAR(32)
 	,ValorDocIdentidad VARCHAR(32)
 	,IdUsuario INT --FK Usuario
-	,IdCTM INT  -- FK CTM
-	,IdCTA INT -- FK CTA
+	,IdCT INT  -- FK CT
     ,IdTDTH INT -- FK TDTH
 )
 
@@ -33,11 +32,6 @@ CREATE TABLE dbo.CTM
 	, SaldoCorteEC INT
 	, FechaCorte DATE
 	, SaldoInteresesCorrientes INT
-      , IdTH INT -- FK TH
-	, IdCTA INT -- FK CTA
-	, IdEC INT  -- FK EC
-	, IdMS INT  -- FK MS
-	, IdMov INT  -- FK Mov
 	, IdTCTM INT  -- FK TCTM
 );
 
@@ -52,7 +46,6 @@ CREATE TABLE dbo.CTA
 (
   Id INT NOT NULL PRIMARY KEY
   , IdTCM INT --FK CTM
-  , IdTH INT -- FK TH
 );
 
 CREATE TABLE dbo.CT
@@ -60,6 +53,7 @@ CREATE TABLE dbo.CT
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , EsMaestra BIT NOT NULL 
   , Codigo INT NOT NULL -- Codigo de la tarjeta para usar el cajero
+  ,IdTH INT  -- FK TH
 );
 
 CREATE TABLE dbo.TF
@@ -71,7 +65,6 @@ CREATE TABLE dbo.TF
   , Codigo INT NOT NULL -- Codigo de la tarjeta asociada
   , IdCT INT  --FK CT
   , IdMI INT  --FK MI
-  , IdMS INT  --FK MS
 );
 
 CREATE TABLE dbo.EC
@@ -189,6 +182,13 @@ CREATE TABLE dbo.EventLog
  , PostTime DATETIME NOT NULL
 );
 
+
+-----------------------------------------------------------------------
+
+ALTER TABLE [dbo].[CT] WITH CHECK ADD CONSTRAINT
+[FK_CT_TH] FOREIGN KEY([IdTH])
+REFERENCES [dbo].[TH] ([id])
+
 -----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
@@ -199,25 +199,6 @@ ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
 [FK_CTM_TCTM] FOREIGN KEY([IdTCTM])
 REFERENCES [dbo].[TCTM] ([Id])
 
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_TH] FOREIGN KEY([IdTH])
-REFERENCES [dbo].[TH] ([id])
-
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_CTA] FOREIGN KEY([IdCTA])
-REFERENCES [dbo].[CTA] ([id])
-
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_EC] FOREIGN KEY([IdEC])
-REFERENCES [dbo].[EC] ([id])
-
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_MovimientoSospechoso] FOREIGN KEY([IdMS])
-REFERENCES [dbo].[MovimientoSospechoso] ([id])
-
-ALTER TABLE [dbo].[CTM] WITH CHECK ADD CONSTRAINT
-[FK_CTM_Movimiento] FOREIGN KEY([IdMov])
-REFERENCES [dbo].[Movimiento] ([id])
 -----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
@@ -227,11 +208,6 @@ REFERENCES [dbo].[CT] ([Id])
 ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
 [FK_CTA_CTM] FOREIGN KEY([IdTCM])
 REFERENCES [dbo].[CTM] ([id])
-
-
-ALTER TABLE [dbo].[CTA] WITH CHECK ADD CONSTRAINT
-[FK_CTA_TH] FOREIGN KEY([IdTH])
-REFERENCES [dbo].[TH] ([id])
 
 -----------------------------------------------------------------------
 
@@ -264,12 +240,8 @@ REFERENCES [dbo].[TCTXRN] ([Id])
 -----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
-[FK_TH_CTM] FOREIGN KEY([IdCTM])
-REFERENCES [dbo].[CTM] ([Id])
-
-ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
-[FK_TH_CTA] FOREIGN KEY([IdCTA])
-REFERENCES [dbo].[CTA] ([Id])
+[FK_TH_CT] FOREIGN KEY([IdCT])
+REFERENCES [dbo].[CT] ([Id])
 
 ALTER TABLE [dbo].[TH] WITH CHECK ADD CONSTRAINT
 [FK_TH_TipoDeTh] FOREIGN KEY([IdTDTH])
@@ -288,10 +260,6 @@ REFERENCES [dbo].[CT] ([id])
 ALTER TABLE [dbo].[TF] WITH CHECK ADD CONSTRAINT
 [FK_TF_MotivoInvalidacion] FOREIGN KEY([IdMI])
 REFERENCES [dbo].[MotivoInvalidacion] ([id])
-
-ALTER TABLE [dbo].[TF] WITH CHECK ADD CONSTRAINT
-[FK_TF_MovimientoSospechoso] FOREIGN KEY([IdMS])
-REFERENCES [dbo].[MovimientoSospechoso] ([id])
 
 -----------------------------------------------------------------------
 
