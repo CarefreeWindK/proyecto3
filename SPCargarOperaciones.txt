@@ -6,7 +6,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [dbo].[CargarOperacionesXML]
+CREATE PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -134,131 +134,131 @@ CROSS APPLY T.X.nodes('../..') AS A(B)
 
  -- Realizar operaciones en base a los datos de la variable de tabla
     
- -- INSERT INTO TH(
-	--	Nombre
-	--	,ValorDocIdentidad
-	--	,IdTDTH
-	--	)
- --   SELECT 
- --       S.Nombre
-	--	,S.ValorDocIdentidad
- --       ,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
- --   FROM @THTemp S
+  INSERT INTO TH(
+		Nombre
+		,ValorDocIdentidad
+		,IdTDTH
+		)
+    SELECT 
+        S.Nombre
+		,S.ValorDocIdentidad
+        ,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
+    FROM @THTemp S
 
-	--INSERT INTO Usuario(
-	--	NombreUsuario
-	--	,EsAdmin
-	--	,Pin
-	--	)
-	-- SELECT 
- --       S.NombreUsuario
-	--	,0
- --       ,S.[Password]
- --   FROM @THTemp S
+	INSERT INTO Usuario(
+		NombreUsuario
+		,EsAdmin
+		,Pin
+		)
+	 SELECT 
+        S.NombreUsuario
+		,0
+        ,S.[Password]
+    FROM @THTemp S
 
 
-	--UPDATE Usuario
-	--SET IdTH = TH.Id
-	--FROM Usuario
-	--INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
-	--INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
-	--WHERE Usuario.EsAdmin = 0;
+	UPDATE Usuario
+	SET IdTH = TH.Id
+	FROM Usuario
+	INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
+	INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
+	WHERE Usuario.EsAdmin = 0;
 	
 
 
-	--UPDATE TH
-	--SET IdUsuario = Usuario.Id
-	--FROM TH
-	--INNER JOIN Usuario ON TH.Id = Usuario.IdTH
+	UPDATE TH
+	SET IdUsuario = Usuario.Id
+	FROM TH
+	INNER JOIN Usuario ON TH.Id = Usuario.IdTH
 
 ----------------------------------------------------------------------------------------------------
 	
-	--INSERT INTO CT(
-	--	EsMaestra
-	--	,Codigo
-	--	,IdTH
-	--	)
-	--SELECT
-	--	1
-	--	,T.codigo
-	--	,IdTH=dbo.THvalorDocToid(T.TH)
-	--FROM @NTCMTemp T
+	INSERT INTO CT(
+		EsMaestra
+		,Codigo
+		,IdTH
+		)
+	SELECT
+		1
+		,T.codigo
+		,IdTH=dbo.THvalorDocToid(T.TH)
+	FROM @NTCMTemp T
 
 
-	--INSERT INTO CTM(
-	--Id
-	--)
-	--SELECT
-	--Id
-	--FROM CT
-	--INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
-	--WHERE CT.EsMaestra=1
+	INSERT INTO CTM(
+	Id
+	)
+	SELECT
+	Id
+	FROM CT
+	INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
+	WHERE CT.EsMaestra=1
 
-	-- UPDATE CTM
- --    SET
- --       Saldo=0
-	--	,PagoMinimo=0
-	--	,SaldoCorteEC=0
-	--	,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
-	--	,SaldoInteresesCorrientes=0
-	--    ,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
-	--FROM CTM
- --   INNER JOIN CT ON CTM.Id=CT.Id
- --   INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
+	 UPDATE CTM
+     SET
+        Saldo=0
+		,PagoMinimo=0
+		,SaldoCorteEC=0
+		,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
+		,SaldoInteresesCorrientes=0
+	    ,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
+	FROM CTM
+    INNER JOIN CT ON CTM.Id=CT.Id
+    INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
 	
 ----------------------------------------------------------------------------------------------------
 	
-	--INSERT INTO CT(
-	--	EsMaestra
-	--	,Codigo
-	--	,IdTH
-	--	)
-	--SELECT
-	--	0
-	--	,T.CodigoTCA
-	--	,IdTH=dbo.THvalorDocToid(T.TH)
-	--FROM @NTCATemp T
+	INSERT INTO CT(
+		EsMaestra
+		,Codigo
+		,IdTH
+		)
+	SELECT
+		0
+		,T.CodigoTCA
+		,IdTH=dbo.THvalorDocToid(T.TH)
+	FROM @NTCATemp T
 
-	--INSERT INTO CTA(
-	--Id
-	--)
-	--SELECT
-	--Id
-	--FROM CT
-	--INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
-	--WHERE CT.EsMaestra=0
+	INSERT INTO CTA(
+	Id
+	)
+	SELECT
+	Id
+	FROM CT
+	INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
+	WHERE CT.EsMaestra=0
 	
-	--UPDATE CTA
- --    SET
- --       IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
-	--FROM CTA
- --   INNER JOIN CT ON CTA.Id=CT.Id
- --   INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
+	UPDATE CTA
+     SET
+        IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
+	FROM CTA
+    INNER JOIN CT ON CTA.Id=CT.Id
+    INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
 
 --------------------------------------------------------------------------------------------------
 	
-	--UPDATE TH
-	--SET 
-	--IdCT = CT.Id
-	--FROM TH
-	--INNER JOIN CT ON TH.Id=CT.IdTH
+	UPDATE TH
+	SET 
+	IdCT = CT.Id
+	FROM TH
+	INNER JOIN CT ON TH.Id=CT.IdTH
 
 --------------------------------------------------------------------------------------------------
- --   INSERT INTO TF(
-	--	 Nombre
-	--	 ,FechaCaducacion
-	--	 ,CCV
-	--	 ,Codigo
-	--	 ,IdCT
-	--	 )
-	--SELECT 
- --       TH.Nombre
-	--	,S.FechaVencimiento
-	--	,S.CCV
-	--	,S.Codigo
-	--	,dbo.CodigoToTC(S.TCAsociada)
- --   FROM @NTFTemp S
-	--INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
+    INSERT INTO TF(
+		 Nombre
+		 ,FechaCaducacion
+		 ,CCV
+		 ,Codigo
+		 ,IdCT
+		 )
+	SELECT 
+        TH.Nombre
+		,S.FechaVencimiento
+		,S.CCV
+		,S.Codigo
+		,dbo.CodigoToTC(S.TCAsociada)
+    FROM @NTFTemp S
+	INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
 --------------------------------------------------------------------------------------------------
 
 	INSERT INTO Movimiento(
