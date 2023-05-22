@@ -244,32 +244,40 @@ CROSS APPLY T.X.nodes('../..') AS A(B)
 	--INNER JOIN CT ON TH.Id=CT.IdTH
 
 --------------------------------------------------------------------------------------------------
-   -- INSERT INTO TF(
-		 --Nombre
-		 --,FechaCaducacion
-		 --,CCV
-		 --,Codigo
-		 --,IdCT
-		 --)
-	--SELECT 
- --       TH.Nombre
-	--	,S.FechaVencimiento
-	--	,S.CCV
-	--	,S.Codigo
-	--	,dbo.CodigoToTC(S.TCAsociada)
- --   FROM @NTFTemp S
-	--INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCTM OR dbo.CodigoToTC(S.TCAsociada) = TH.IdCTA
+    INSERT INTO TF(
+		 Nombre
+		 ,FechaCaducacion
+		 ,CCV
+		 ,Codigo
+		 ,IdCT
+		 )
+	SELECT 
+        TH.Nombre
+		,S.FechaVencimiento
+		,S.CCV
+		,S.Codigo
+		,dbo.CodigoToTC(S.TCAsociada)
+    FROM @NTFTemp S
+	INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
 --------------------------------------------------------------------------------------------------
 
-
-	--SELECT 
- --        S.Nombre
- --       ,S.TF
-	--	,S.FechaMovimiento
-	--	,S.Monto
-	--	,S.Descripcion
-	--	,S.Referencia
- --   FROM @MovimientoTemp S
+	INSERT INTO Movimiento(
+		 Nombre
+		 ,Fecha
+		 ,Monto
+		 ,Descripcion
+		 ,Referencia
+		 ,IdTF
+		 )
+	SELECT 
+         S.Nombre
+		,S.FechaMovimiento
+		,S.Monto
+		,S.Descripcion
+		,S.Referencia
+		,S.TF
+    FROM @MovimientoTemp S
 	
 	
 END
+
