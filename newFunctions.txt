@@ -124,3 +124,28 @@ BEGIN
     WHERE A.ValorDocIdentidad = @inValorDoc;
     RETURN @resultado;
 END;
+CREATE FUNCTION dbo.nombreToidTM (@inNombre INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id= T.Id
+    FROM TM T
+    WHERE T.Nombre= @inNombre
+    RETURN @Id;
+
+END;
+
+
+
+CREATE FUNCTION dbo.CodigoTFToTFId (@inCodigo INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Id INT;
+    SELECT @Id= T.Id
+    FROM TF T
+    WHERE T.Codigo=@inCodigo
+    RETURN @Id;
+
+END;
