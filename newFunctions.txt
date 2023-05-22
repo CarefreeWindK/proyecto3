@@ -149,3 +149,15 @@ BEGIN
     RETURN @Id;
 
 END;
+
+CREATE FUNCTION dbo.TDTHidToNombre (@inId INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @nombre VARCHAR(32);
+    SELECT @nombre= T.Tipo
+    FROM TipoDeTH T
+    WHERE T.id= @inId
+    RETURN @nombre;
+
+END;
