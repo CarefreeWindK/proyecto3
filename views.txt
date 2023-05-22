@@ -1,0 +1,12 @@
+CREATE VIEW CTview AS
+SELECT 
+    T.Codigo
+    ,T.EsMaestra
+FROM CT T
+
+CREATE VIEW THview AS
+SELECT 
+    T.Nombre
+    ,T.ValorDocIdentidad
+    ,T.IdTDTH
+FROM TH T
