@@ -61,8 +61,8 @@ CREATE TABLE dbo.TF
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR(32)
   , FechaCaducacion VARCHAR(32)
-  , CCV INT NOT NULL -- Codigo de la tarjeta asociada
-  , Codigo INT NOT NULL -- Codigo de la tarjeta asociada
+  , CCV VARCHAR(32) NOT NULL -- Codigo de la tarjeta asociada
+  , Codigo VARCHAR(64) NOT NULL -- Codigo de la tarjeta asociada
   , IdCT INT  --FK CT
   , IdMI INT  --FK MI
 );
@@ -102,7 +102,7 @@ CREATE TABLE dbo.Movimiento
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR (64)  
-  , Fecha DATE
+  , Fecha VARCHAR (32)
   , Monto MONEY
   , Descripcion VARCHAR (32)
   , Referencia VARCHAR (32)
