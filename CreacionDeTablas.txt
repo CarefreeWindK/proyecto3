@@ -292,8 +292,8 @@ ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
 REFERENCES [dbo].[TMTI] ([id])
 
 ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
-[FK_Movimiento_CTM] FOREIGN KEY([IdCTM])
-REFERENCES [dbo].[CTM] ([id])
+[FK_Movimiento_TF] FOREIGN KEY([IdTF])
+REFERENCES [dbo].[TF] ([id])
 
 -----------------------------------------------------------------------
 
@@ -314,5 +314,6 @@ REFERENCES [dbo].[RN] ([id])
 ALTER TABLE [dbo].[TCTXRN] WITH CHECK ADD CONSTRAINT
 [FK_TCTXRN_TCTM] FOREIGN KEY([IdTCTM])
 REFERENCES [dbo].[TCTM] ([id])
+
 
 
