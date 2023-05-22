@@ -43,7 +43,7 @@ BEGIN
    )
 
    DECLARE @MovimientoTemp TABLE (
-        Nombre VARCHAR(32)
+        Nombre VARCHAR(128)
 		,TF VARCHAR(32)
         ,FechaMovimiento VARCHAR(32)
 		,Monto VARCHAR(32)
@@ -123,7 +123,7 @@ CROSS APPLY T.X.nodes('../..') AS A(B)
 		,Referencia 
     )
     SELECT 
-		T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+		T.X.value('@Nombre', 'VARCHAR(128)') AS Nombre
         ,T.X.value('@TF', 'VARCHAR(32)') AS TF
         ,T.X.value('@FechaMovimiento ', 'VARCHAR(32)') AS FechaMovimiento
 		,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
@@ -244,21 +244,21 @@ CROSS APPLY T.X.nodes('../..') AS A(B)
 	--INNER JOIN CT ON TH.Id=CT.IdTH
 
 --------------------------------------------------------------------------------------------------
-    INSERT INTO TF(
-		 Nombre
-		 ,FechaCaducacion
-		 ,CCV
-		 ,Codigo
-		 ,IdCT
-		 )
-	SELECT 
-        TH.Nombre
-		,S.FechaVencimiento
-		,S.CCV
-		,S.Codigo
-		,dbo.CodigoToTC(S.TCAsociada)
-    FROM @NTFTemp S
-	INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
+ --   INSERT INTO TF(
+	--	 Nombre
+	--	 ,FechaCaducacion
+	--	 ,CCV
+	--	 ,Codigo
+	--	 ,IdCT
+	--	 )
+	--SELECT 
+ --       TH.Nombre
+	--	,S.FechaVencimiento
+	--	,S.CCV
+	--	,S.Codigo
+	--	,dbo.CodigoToTC(S.TCAsociada)
+ --   FROM @NTFTemp S
+	--INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
 --------------------------------------------------------------------------------------------------
 
 	INSERT INTO Movimiento(
@@ -273,7 +273,7 @@ CROSS APPLY T.X.nodes('../..') AS A(B)
 	SELECT 
          S.Nombre
 		,S.FechaMovimiento
-		,S.Monto
+		,CONVERT(MONEY, S.Monto)
 		,S.Descripcion
 		,S.Referencia
 		,dbo.CodigoTFToTFId(S.TF)
