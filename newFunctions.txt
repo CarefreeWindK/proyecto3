@@ -161,7 +161,7 @@ BEGIN
     RETURN @outNombre;
 
 END;
-CREATE FUNCTION dbo.returnNUA (@inEsMaestra INT)
+CREATE FUNCTION dbo.IdToNombreEM(@inEsMaestra INT)
 RETURNS VARCHAR(16)
 AS
 BEGIN
