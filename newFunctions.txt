@@ -2,13 +2,13 @@ CREATE FUNCTION dbo.returnNUA (@inNUA INT)
 RETURNS INT
 AS
 BEGIN
-    DECLARE @contador INT;
-    SET @Contador = (
+    DECLARE @outContador INT;
+    SET @outContador = (
         SELECT COUNT(*)
         FROM Usuario U
         WHERE U.EsAdmin = @inNUA
     );
-    RETURN @Contador;
+    RETURN @outContador;
 
 END;
 
@@ -16,54 +16,54 @@ CREATE FUNCTION dbo.returnRNId (@inIdTCTM INT,@inNombreRegla VARCHAR(64))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @Id INT;
-    SELECT @Id=U.Id
+    DECLARE @outId INT;
+    SELECT @outId=U.Id
     FROM RN U
     WHERE U.IdTCTM = @inIdTCTM AND U.Nombre=@inNombreRegla
-    RETURN @Id;
+    RETURN @outId;
 END;
 
 CREATE FUNCTION dbo.returnMontoTCTXRNMM (@inIdRN INT)
 RETURNS INT
 AS
 BEGIN
-    DECLARE @Valor VARCHAR(64);
-    SELECT @Valor=U.Monto
+    DECLARE @outValor VARCHAR(64);
+    SELECT @outValor=U.Monto
     FROM TCTXRNMM U
     WHERE U.Id = @inIdRN
-    RETURN @Valor;
+    RETURN @outValor;
 END;
 
 CREATE FUNCTION dbo.CodigoToTC (@inCodigo VARCHAR(32))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @Id INT;
-    SELECT @Id=U.Id
+    DECLARE @outId INT;
+    SELECT @outId=U.Id
     FROM CT U
     WHERE U.Codigo = @inCodigo
-    RETURN @Id;
+    RETURN @outId;
 END;
 CREATE FUNCTION dbo.TCTMnombreToid (@inNombre VARCHAR(32))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @resultado INT;
-    SELECT @resultado = A.Id
+    DECLARE @outResultado INT;
+    SELECT @outResultado = A.Id
     FROM TCTM A
     WHERE A.Nombre = @inNombre;
-    RETURN @resultado;
+    RETURN @outResultado;
 END;
 
 CREATE FUNCTION dbo.RNnombreToid (@inNombre VARCHAR(32))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @resultado INT;
-    SELECT @resultado = A.Id
+    DECLARE @outResultado INT;
+    SELECT @outResultado = A.Id
     FROM TRN A
     WHERE A.Nombre = @inNombre;
-    RETURN @resultado;
+    RETURN @outResultado;
 END;
 CREATE PROCEDURE dbo.nuevoUsuarioXML
 	@inNombre VARCHAR
@@ -97,42 +97,42 @@ CREATE FUNCTION dbo.TDTHnombreToid (@inNombre VARCHAR(32))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @resultado INT;
-    SELECT @resultado = A.Id
+    DECLARE @outResultado INT;
+    SELECT @outResultado = A.Id
     FROM TipoDeTH A
     WHERE A.Tipo = @inNombre;
-    RETURN @resultado;
+    RETURN @outResultado;
 END;
 
 CREATE FUNCTION dbo.VDTHToid (@inValorDocTH VARCHAR(32)) -- VDTH valor de tipo de TH
 RETURNS INT
 AS
 BEGIN
-    DECLARE @resultado INT;
-    SELECT @resultado = A.Id
+    DECLARE @outResultado INT;
+    SELECT @outResultado = A.Id
     FROM TH A
     WHERE A.ValorDocIdentidad = @inValorDocTH;
-    RETURN @resultado;
+    RETURN @outResultado;
 END;
 CREATE FUNCTION [dbo].[THvalorDocToid] (@inValorDoc VARCHAR(32))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @resultado INT;
-    SELECT @resultado = A.Id
+    DECLARE @outResultado INT;
+    SELECT @outResultado = A.Id
     FROM TH A
     WHERE A.ValorDocIdentidad = @inValorDoc;
-    RETURN @resultado;
+    RETURN @outResultado;
 END;
 CREATE FUNCTION dbo.nombreToidTM (@inNombre VARCHAR(64))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @Id INT;
-    SELECT @Id= T.Id
+    DECLARE @outId INT;
+    SELECT @outId= T.Id
     FROM TM T
     WHERE T.Nombre= @inNombre
-    RETURN @Id;
+    RETURN @outId;
 
 END;
 
@@ -142,11 +142,11 @@ CREATE FUNCTION dbo.CodigoTFToTFId (@inCodigo VARCHAR(64))
 RETURNS INT
 AS
 BEGIN
-    DECLARE @Id INT;
-    SELECT @Id= T.Id
+    DECLARE @outId INT;
+    SELECT @outId= T.Id
     FROM TF T
     WHERE T.Codigo=@inCodigo
-    RETURN @Id;
+    RETURN @outId;
 
 END;
 
@@ -154,10 +154,21 @@ CREATE FUNCTION dbo.TDTHidToNombre (@inId INT)
 RETURNS INT
 AS
 BEGIN
-    DECLARE @nombre VARCHAR(32);
-    SELECT @nombre= T.Tipo
+    DECLARE @outNombre VARCHAR(32);
+    SELECT @outNombre= T.Tipo
     FROM TipoDeTH T
     WHERE T.id= @inId
-    RETURN @nombre;
+    RETURN @outNombre;
 
+END;
+CREATE FUNCTION dbo.returnNUA (@inEsMaestra INT)
+RETURNS VARCHAR(16)
+AS
+BEGIN
+    DECLARE @outNombre VARCHAR(16) = 'Asociada'
+    
+    IF (@inEsMaestra = 1)
+        SET @outNombre = 'Maestra'
+    
+    RETURN @outNombre
 END;
