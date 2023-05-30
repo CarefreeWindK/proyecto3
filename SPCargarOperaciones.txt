@@ -85,223 +85,245 @@ BEGIN
 
 	WHILE @fechaActual <= @fechaFin
 	BEGIN
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO @THTemp (
-			Nombre
-			,TipoDocIdentidad 
-			,ValorDocIdentidad 
-			,NombreUsuario 
-			,[Password]
-		)
-		SELECT 
-			T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
-			,T.X.value('@Tipo_Doc_Identidad', 'VARCHAR(32)') AS TipoDocIdentidad 
-			,T.X.value('@Valor_Doc_Identidad', 'VARCHAR(32)') AS ValorDocIdentidad 
-			,T.X.value('@NombreUsuario', 'VARCHAR(32)') AS NombreUsuario 
-			,T.X.value('@Password', 'VARCHAR(32)') AS [Password]
-		FROM @XmlData.nodes('/root/fechaOperacion/TH/TH') AS T(X)
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO @NTCMTemp  (
-			 Codigo 
-			,TipoCTM 
-			,LimiteDeCredito 
-			,TH
-			,FechaOperacion
-		)
-		SELECT 
-			T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo,
-			T.X.value('@TipoCTM', 'VARCHAR(32)') AS TipoCTM,
-			T.X.value('@LimiteCredito', 'VARCHAR(32)') AS LimiteDeCredito,
-			T.X.value('@TH', 'VARCHAR(32)') AS TH,
-			A.B.value('@Fecha', 'VARCHAR(32)') AS FechaOperacion
-		FROM @XmlData.nodes('/root/fechaOperacion/NTCM/NTCM') AS T(X)
-		CROSS APPLY T.X.nodes('../..') AS A(B)
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO @NTCATemp  (
-			CodigoTCM 
-			,CodigoTCA 
-			,TH  
-		)
-		SELECT 
-			T.X.value('@CodigoTCM', 'VARCHAR(32)') AS CodigoTCM
-			,T.X.value('@CodigoTCA', 'VARCHAR(32)') AS CodigoTCA
-			,T.X.value('@TH', 'VARCHAR(32)') AS TH
-		FROM @XmlData.nodes('/root/fechaOperacion/NTCA/NTCA') AS T(X)
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO @NTFTemp  (
-			Codigo
-			,TCAsociada 
-			,FechaVencimiento 
-			,CCV 
-		)
-		SELECT 
-			T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
-			,T.X.value('@TCAsociada', 'VARCHAR(32)') AS TCAsociada
-			,T.X.value('@FechaVencimiento', 'VARCHAR(32)') AS FechaVencimiento
-			,T.X.value('@CCV', 'VARCHAR(32)') AS CCV
-		FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO @MovimientoTemp  (
-			Nombre 
-			,TF 
-			,FechaMovimiento 
-			,Monto
-			,Descripcion 
-			,Referencia 
-		)
-		SELECT 
-			T.X.value('@Nombre', 'VARCHAR(128)') AS Nombre
-			,T.X.value('@TF', 'VARCHAR(32)') AS TF
-			,T.X.value('@FechaMovimiento ', 'VARCHAR(32)') AS FechaMovimiento
-			,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
-			,T.X.value('@Descripcion', 'VARCHAR(32)') AS Descripcion
-			,T.X.value('@Referencia ', 'VARCHAR(32)') AS Referencia
-		FROM @XmlData.nodes('/root/fechaOperacion/Movimiento/Movimiento') AS T(X)
-		--------------------------------------------------------------------------------------------------
-		-- Realizar operaciones en base a los datos de la variable de tabla
+	IF EXISTS (SELECT Fechas FROM @Fechas WHERE @fechaActual = Fechas)
+		BEGIN
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO @THTemp (
+				Nombre
+				,TipoDocIdentidad 
+				,ValorDocIdentidad 
+				,NombreUsuario 
+				,[Password]
+			)
+			SELECT 
+				T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+				,T.X.value('@Tipo_Doc_Identidad', 'VARCHAR(32)') AS TipoDocIdentidad 
+				,T.X.value('@Valor_Doc_Identidad', 'VARCHAR(32)') AS ValorDocIdentidad 
+				,T.X.value('@NombreUsuario', 'VARCHAR(32)') AS NombreUsuario 
+				,T.X.value('@Password', 'VARCHAR(32)') AS [Password]
+			FROM @XmlData.nodes('/root/fechaOperacion/TH/TH') AS T(X)
+			WHERE T.X.value('../../../fechaOperacion', 'DATE') = @fechaActual;
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO @NTCMTemp  (
+				 Codigo 
+				,TipoCTM 
+				,LimiteDeCredito 
+				,TH
+				,FechaOperacion
+			)
+			SELECT 
+				T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo,
+				T.X.value('@TipoCTM', 'VARCHAR(32)') AS TipoCTM,
+				T.X.value('@LimiteCredito', 'VARCHAR(32)') AS LimiteDeCredito,
+				T.X.value('@TH', 'VARCHAR(32)') AS TH,
+				A.B.value('@Fecha', 'VARCHAR(32)') AS FechaOperacion
+			FROM @XmlData.nodes('/root/fechaOperacion/NTCM/NTCM') AS T(X)
+			CROSS APPLY T.X.nodes('../..') AS A(B)
+			WHERE T.X.value('../../../fechaOperacion', 'DATE') = @fechaActual;
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO @NTCATemp  (
+				CodigoTCM 
+				,CodigoTCA 
+				,TH  
+			)
+			SELECT 
+				T.X.value('@CodigoTCM', 'VARCHAR(32)') AS CodigoTCM
+				,T.X.value('@CodigoTCA', 'VARCHAR(32)') AS CodigoTCA
+				,T.X.value('@TH', 'VARCHAR(32)') AS TH
+			FROM @XmlData.nodes('/root/fechaOperacion/NTCA/NTCA') AS T(X)
+			WHERE T.X.value('../../../fechaOperacion', 'DATE') = @fechaActual;
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO @NTFTemp  (
+				Codigo
+				,TCAsociada 
+				,FechaVencimiento 
+				,CCV 
+			)
+			SELECT 
+				T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
+				,T.X.value('@TCAsociada', 'VARCHAR(32)') AS TCAsociada
+				,T.X.value('@FechaVencimiento', 'VARCHAR(32)') AS FechaVencimiento
+				,T.X.value('@CCV', 'VARCHAR(32)') AS CCV
+			FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
+			WHERE T.X.value('../../../fechaOperacion', 'DATE') = @fechaActual;
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO @MovimientoTemp  (
+				Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto
+				,Descripcion 
+				,Referencia 
+			)
+			SELECT 
+				T.X.value('@Nombre', 'VARCHAR(128)') AS Nombre
+				,T.X.value('@TF', 'VARCHAR(32)') AS TF
+				,T.X.value('@FechaMovimiento ', 'VARCHAR(32)') AS FechaMovimiento
+				,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
+				,T.X.value('@Descripcion', 'VARCHAR(32)') AS Descripcion
+				,T.X.value('@Referencia ', 'VARCHAR(32)') AS Referencia
+			FROM @XmlData.nodes('/root/fechaOperacion/Movimiento/Movimiento') AS T(X)
+			WHERE T.X.value('../../../fechaOperacion', 'DATE') = @fechaActual;
+			--------------------------------------------------------------------------------------------------
+			-- Realizar operaciones en base a los datos de la variable de tabla
     
-		INSERT INTO TH(
-			Nombre
-			,ValorDocIdentidad
-			,IdTDTH
+			INSERT INTO TH(
+				Nombre
+				,ValorDocIdentidad
+				,IdTDTH
+				)
+			SELECT 
+				S.Nombre
+				,S.ValorDocIdentidad
+				,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
+			FROM @THTemp S
+
+			INSERT INTO Usuario(
+				NombreUsuario
+				,EsAdmin
+				,Pin
+				)
+			 SELECT 
+				S.NombreUsuario
+				,0
+				,S.[Password]
+			FROM @THTemp S
+
+			UPDATE Usuario
+			SET IdTH = TH.Id
+			FROM Usuario
+			INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
+			INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
+			WHERE Usuario.EsAdmin = 0;
+	
+			UPDATE TH
+			SET IdUsuario = Usuario.Id
+			FROM TH
+			INNER JOIN Usuario ON TH.Id = Usuario.IdTH
+
+			----------------------------------------------------------------------------------------------------
+
+			INSERT INTO CT(
+				EsMaestra
+				,Codigo
+				,IdTH
+				)
+			SELECT
+				1
+				,T.codigo
+				,IdTH=dbo.THvalorDocToid(T.TH)
+			FROM @NTCMTemp T
+
+			INSERT INTO CTM(
+			Id
 			)
-		SELECT 
-			S.Nombre
-			,S.ValorDocIdentidad
-			,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
-		FROM @THTemp S
+			SELECT
+			Id
+			FROM CT
+			INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
+			WHERE CT.EsMaestra=1
 
-		INSERT INTO Usuario(
-			NombreUsuario
-			,EsAdmin
-			,Pin
+			 UPDATE CTM
+			 SET
+				Saldo=0
+				,PagoMinimo=0
+				,SaldoCorteEC=0
+				,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
+				,SaldoInteresesCorrientes=0
+				,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
+			FROM CTM
+			INNER JOIN CT ON CTM.Id=CT.Id
+			INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
+	
+			----------------------------------------------------------------------------------------------------
+	
+			INSERT INTO CT(
+				EsMaestra
+				,Codigo
+				,IdTH
+				)
+			SELECT
+				0
+				,T.CodigoTCA
+				,IdTH=dbo.THvalorDocToid(T.TH)
+			FROM @NTCATemp T
+
+			INSERT INTO CTA(
+			Id
 			)
-		 SELECT 
-			S.NombreUsuario
-			,0
-			,S.[Password]
-		FROM @THTemp S
-
-		UPDATE Usuario
-		SET IdTH = TH.Id
-		FROM Usuario
-		INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
-		INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
-		WHERE Usuario.EsAdmin = 0;
+			SELECT
+			Id
+			FROM CT
+			INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
+			WHERE CT.EsMaestra=0
 	
-		UPDATE TH
-		SET IdUsuario = Usuario.Id
-		FROM TH
-		INNER JOIN Usuario ON TH.Id = Usuario.IdTH
+			UPDATE CTA
+			 SET
+				IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
+			FROM CTA
+			INNER JOIN CT ON CTA.Id=CT.Id
+			INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
 
-		----------------------------------------------------------------------------------------------------
-
-		INSERT INTO CT(
-			EsMaestra
-			,Codigo
-			,IdTH
-			)
-		SELECT
-			1
-			,T.codigo
-			,IdTH=dbo.THvalorDocToid(T.TH)
-		FROM @NTCMTemp T
-
-		INSERT INTO CTM(
-		Id
-		)
-		SELECT
-		Id
-		FROM CT
-		INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
-		WHERE CT.EsMaestra=1
-
-		 UPDATE CTM
-		 SET
-			Saldo=0
-			,PagoMinimo=0
-			,SaldoCorteEC=0
-			,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
-			,SaldoInteresesCorrientes=0
-			,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
-		FROM CTM
-		INNER JOIN CT ON CTM.Id=CT.Id
-		INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
+			--------------------------------------------------------------------------------------------------
 	
-		----------------------------------------------------------------------------------------------------
-	
-		INSERT INTO CT(
-			EsMaestra
-			,Codigo
-			,IdTH
-			)
-		SELECT
-			0
-			,T.CodigoTCA
-			,IdTH=dbo.THvalorDocToid(T.TH)
-		FROM @NTCATemp T
+			UPDATE TH
+			SET 
+			IdCT = CT.Id
+			FROM TH
+			INNER JOIN CT ON TH.Id=CT.IdTH
 
-		INSERT INTO CTA(
-		Id
-		)
-		SELECT
-		Id
-		FROM CT
-		INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
-		WHERE CT.EsMaestra=0
-	
-		UPDATE CTA
-		 SET
-			IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
-		FROM CTA
-		INNER JOIN CT ON CTA.Id=CT.Id
-		INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
-
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO TF(
+				 Nombre
+				 ,FechaCaducacion
+				 ,CCV
+				 ,Codigo
+				 ,IdCT
+				 )
+			SELECT 
+				TH.Nombre
+				,S.FechaVencimiento
+				,S.CCV
+				,S.Codigo
+				,dbo.CodigoToTC(S.TCAsociada)
+			FROM @NTFTemp S
+			INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO Movimiento(
+				 Nombre
+				 ,Fecha
+				 ,Monto
+				 ,Descripcion
+				 ,Referencia
+				 ,IdTF
+				 ,IdTM
+				 )
+			SELECT 
+				 S.Nombre
+				,S.FechaMovimiento
+				,CONVERT(MONEY, S.Monto)
+				,S.Descripcion
+				,S.Referencia
+				,dbo.CodigoTFToTFId(S.TF)
+				,dbo.nombreToidTM (S.Nombre)
+			FROM @MovimientoTemp S	
+			--------------------------------------------------------------------------------------------------
+			INSERT INTO EC(
+				 Fecha
+				 ,IdMov
+				 ,IdCTM
+				 )
+			SELECT 
+				 S.FechaMovimiento
+				,dbo.CodigoTFToIdCT(S.Referencia)
+				,dbo.CodigoTFToIdCT(S.TF)
+			FROM @MovimientoTemp S	
+		END
 		--------------------------------------------------------------------------------------------------
-	
-		UPDATE TH
-		SET 
-		IdCT = CT.Id
-		FROM TH
-		INNER JOIN CT ON TH.Id=CT.IdTH
-
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO TF(
-			 Nombre
-			 ,FechaCaducacion
-			 ,CCV
-			 ,Codigo
-			 ,IdCT
-			 )
-		SELECT 
-			TH.Nombre
-			,S.FechaVencimiento
-			,S.CCV
-			,S.Codigo
-			,dbo.CodigoToTC(S.TCAsociada)
-		FROM @NTFTemp S
-		INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
-		--------------------------------------------------------------------------------------------------
-		INSERT INTO Movimiento(
-			 Nombre
-			 ,Fecha
-			 ,Monto
-			 ,Descripcion
-			 ,Referencia
-			 ,IdTF
-			 ,IdTM
-			 )
-		SELECT 
-			 S.Nombre
-			,S.FechaMovimiento
-			,CONVERT(MONEY, S.Monto)
-			,S.Descripcion
-			,S.Referencia
-			,dbo.CodigoTFToTFId(S.TF)
-			,dbo.nombreToidTM (S.Nombre)
-		FROM @MovimientoTemp S
-		--------------------------------------------------------------------------------------------------
+		-----Fecha de Corte-----
+			
 		SET @fechaActual = DATEADD(DAY, 1, @fechaActual);
 	END;
 END
+
 
