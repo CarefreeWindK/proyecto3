@@ -1,15 +1,17 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 18/05/2023 3:04:13 pm ******/
+/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 04/06/2023 3:08:33 pm ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE [dbo].[CargarCatalogoXML]
+ALTER PROCEDURE [dbo].[CargarCatalogoXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
+	SET NOCOUNT ON;
+    BEGIN TRY
     -- Declarar la variable de tabla para almacenar los datos del XML
 	DECLARE @ADMIN BIT = 1;
     DECLARE @TDITemp TABLE (
@@ -239,72 +241,103 @@ BEGIN
 		,S.Accion
     FROM @TMTITemp S
 
---------------------------------------------------------------------------------------------------
-INSERT INTO [dbo].[TCTXRN] (
-	[IdRN]
-	, [IdTCTM]
-	)
-SELECT 
-    RN.Id AS IdRN,
-    T.Id AS IdCTM
-FROM TCTM T
-INNER JOIN RN ON T.Id = RN.IdTCTM
+	--------------------------------------------------------------------------------------------------
+	INSERT INTO [dbo].[TCTXRN] (
+		[IdRN]
+		, [IdTCTM]
+		)
+	SELECT 
+		RN.Id AS IdRN,
+		T.Id AS IdCTM
+	FROM TCTM T
+	INNER JOIN RN ON T.Id = RN.IdTCTM
 
 
 
-INSERT INTO [dbo].[TCTXRNTasa] (
-	[Id]
-	) 
-SELECT 
-	S.Id
-FROM TCTXRN S
-WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=1
+	INSERT INTO [dbo].[TCTXRNTasa] (
+		[Id]
+		) 
+	SELECT 
+		S.Id
+	FROM TCTXRN S
+	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=1
 
-UPDATE TCTXRNTasa
-SET Tasa = RNTemp.Valor
-FROM TCTXRNTasa
-INNER JOIN @RNTemp AS RNTemp ON TCTXRNTasa.Id = RNTemp.Id
-WHERE RNTemp.TRN = 'Porcentaje';
---------------------------------------------------------------------------------------------------
-INSERT INTO [dbo].[TCTXRNQDias] (
-	[Id]
-	) 
-SELECT 
-	S.Id
-FROM TCTXRN S
-WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=2
+	UPDATE TCTXRNTasa
+	SET Tasa = RNTemp.Valor
+	FROM TCTXRNTasa
+	INNER JOIN @RNTemp AS RNTemp ON TCTXRNTasa.Id = RNTemp.Id
+	WHERE RNTemp.TRN = 'Porcentaje';
+	--------------------------------------------------------------------------------------------------
+	INSERT INTO [dbo].[TCTXRNQDias] (
+		[Id]
+		) 
+	SELECT 
+		S.Id
+	FROM TCTXRN S
+	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=2
 
-UPDATE TCTXRNQDias
-SET QDias = RNTemp.Valor
-FROM TCTXRNQDias
-INNER JOIN @RNTemp AS RNTemp ON TCTXRNQDias.Id = RNTemp.Id
-WHERE RNTemp.TRN = 'Cantidad de Dias';
---------------------------------------------------------------------------------------------------
-INSERT INTO [dbo].[TCTXRNQOP] (
-	[Id]
-	) 
-SELECT 
-	S.Id
-FROM TCTXRN S
-WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=3
+	UPDATE TCTXRNQDias
+	SET QDias = RNTemp.Valor
+	FROM TCTXRNQDias
+	INNER JOIN @RNTemp AS RNTemp ON TCTXRNQDias.Id = RNTemp.Id
+	WHERE RNTemp.TRN = 'Cantidad de Dias';
+	--------------------------------------------------------------------------------------------------
+	INSERT INTO [dbo].[TCTXRNQOP] (
+		[Id]
+		) 
+	SELECT 
+		S.Id
+	FROM TCTXRN S
+	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=3
 
-UPDATE TCTXRNQOP
-SET QOperaciones = RNTemp.Valor
-FROM TCTXRNQOP
-INNER JOIN @RNTemp AS RNTemp ON TCTXRNQOP.Id = RNTemp.Id
-WHERE RNTemp.TRN = 'Cantidad de Operaciones';
---------------------------------------------------------------------------------------------------
-INSERT INTO [dbo].[TCTXRNMM] (
-	[Id]
-	) 
-SELECT 
-	S.Id
-FROM TCTXRN S
-WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=4
+	UPDATE TCTXRNQOP
+	SET QOperaciones = RNTemp.Valor
+	FROM TCTXRNQOP
+	INNER JOIN @RNTemp AS RNTemp ON TCTXRNQOP.Id = RNTemp.Id
+	WHERE RNTemp.TRN = 'Cantidad de Operaciones';
+	--------------------------------------------------------------------------------------------------
+	INSERT INTO [dbo].[TCTXRNMM] (
+		[Id]
+		) 
+	SELECT 
+		S.Id
+	FROM TCTXRN S
+	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=4
 
-UPDATE TCTXRNMM
-SET Monto = RNTemp.Valor
-FROM TCTXRNMM
-INNER JOIN @RNTemp AS RNTemp ON TCTXRNMM.Id = RNTemp.Id
-WHERE RNTemp.TRN = 'Monto Monetario';
+	UPDATE TCTXRNMM
+	SET Monto = RNTemp.Valor
+	FROM TCTXRNMM
+	INNER JOIN @RNTemp AS RNTemp ON TCTXRNMM.Id = RNTemp.Id
+	WHERE RNTemp.TRN = 'Monto Monetario';
+    
+	DROP TABLE TDITemp;
+
+	DROP TABLE TCTMTemp;
+
+	DROP TABLE TRNTemp;
+
+	DROP TABLE RNTemp;
+
+	DROP TABLE MITTemp;
+
+	DROP TABLE TMTemp;
+
+	DROP TABLE UATemp;
+
+	DROP TABLE TMTITemp;
+END TRY
+BEGIN CATCH     
+    INSERT INTO dbo.DBErrors  
+    VALUES (
+      SUSER_SNAME(),
+      ERROR_NUMBER(),
+      ERROR_STATE(),
+      ERROR_SEVERITY(),
+      ERROR_LINE(),
+      ERROR_PROCEDURE(),
+      ERROR_MESSAGE(),
+      GETDATE()
+    );
+END CATCH
+SET NOCOUNT OFF;
 END
