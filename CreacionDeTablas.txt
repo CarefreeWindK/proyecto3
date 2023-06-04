@@ -72,6 +72,8 @@ CREATE TABLE dbo.EC
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Fecha VARCHAR(32)
   ,Saldo MONEY
+  ,ContadorATM INT
+  ,ContadorVentanilla INT
   ,IdCTM INT  --FK CTM
 );
 
