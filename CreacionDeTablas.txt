@@ -71,7 +71,7 @@ CREATE TABLE dbo.EC
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Fecha VARCHAR(32)
-  ,IdMov INT  --FK Movimiento
+  ,Saldo MONEY
   ,IdCTM INT  --FK CTM
 );
 
@@ -109,6 +109,7 @@ CREATE TABLE dbo.Movimiento
   , IdTM INT --FK TM
   , IdTMTI INT --FK TMTI
   , IdTF INT --FK TF
+  , IdEC INT --FK EC
 );
 
 CREATE TABLE dbo.RN
@@ -264,10 +265,6 @@ REFERENCES [dbo].[MotivoInvalidacion] ([id])
 -----------------------------------------------------------------------
 
 ALTER TABLE [dbo].[EC] WITH CHECK ADD CONSTRAINT
-[FK_EC_Movimiento] FOREIGN KEY([IdMov])
-REFERENCES [dbo].[Movimiento] ([id])
-
-ALTER TABLE [dbo].[EC] WITH CHECK ADD CONSTRAINT
 [FK_EC_CTM] FOREIGN KEY([IdCTM])
 REFERENCES [dbo].[CTM] ([id])
 
@@ -294,6 +291,10 @@ REFERENCES [dbo].[TMTI] ([id])
 ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
 [FK_Movimiento_TF] FOREIGN KEY([IdTF])
 REFERENCES [dbo].[TF] ([id])
+
+ALTER TABLE [dbo].[Movimiento] WITH CHECK ADD CONSTRAINT
+[FK_Movimiento_EC] FOREIGN KEY([IdEC])
+REFERENCES [dbo].[EC] ([id])
 
 -----------------------------------------------------------------------
 
