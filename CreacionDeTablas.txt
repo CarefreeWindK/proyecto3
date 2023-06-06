@@ -73,6 +73,15 @@ CREATE TABLE dbo.EC
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   ,Fecha VARCHAR(32)
   ,Saldo MONEY
+  ,QPagos INT
+  ,QCreditos INT
+  ,SUMCreditos INT
+  ,SUMPagos INT
+  ,SUMPagosAntesFechaPagoMin INT
+  ,PagoContado INT
+  ,PagoMin INT
+  ,IntereseCorrientes INT
+  ,InteresMoratorios INT
   ,ContadorATM INT
   ,ContadorVentanilla INT
   ,IdCTM INT  --FK CTM
