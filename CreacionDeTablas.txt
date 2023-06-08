@@ -95,7 +95,6 @@ CREATE TABLE dbo.EC
   ,QCreditos INT
   ,SUMDebitos INT
   ,QDebitos INT
-  ,PagoContado INT
   ,IdCTM INT  --FK CTM
 );
 
