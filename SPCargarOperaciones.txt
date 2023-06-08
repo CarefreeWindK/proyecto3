@@ -62,11 +62,7 @@ BEGIN
 		Id INT IDENTITY (1,1) 
         ,Fechas DATE
    )
-   DECLARE @NuevasTF TABLE(
-		Id INT IDENTITY (1,1) 
-		,TFVieja VARCHAR(32)
-		,TFNueva VARCHAR(32)
-   )
+
    DECLARE @MovInteresesCorr TABLE(
 		MontoDebitoInteresesCorrientes REAL
 		,SaldoInteresesCorrientes REAL
@@ -308,30 +304,64 @@ BEGIN
 			INSERT INTO EC(
 				 Fecha
 				 ,Saldo
+				 ,QPagos
+				 ,QCreditos
+				 ,SUMCreditos
+				 ,SUMPagos
+				 ,SUMPagosAntesFechaPagoMin
+				 ,PagoContado
+				 ,PagoMin
+				 ,IntereseCorrientes
+				 ,InteresMoratorios
+				 ,ContadorATM
+				 ,ContadorVentanilla
 				 ,IdCTM
 				 )
 			SELECT 
-				 S.FechaMovimiento
-				,1
+				 @fechaActual
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
+				,0
 				,dbo.CodigoTFToIdCT(S.TF)
 			FROM @MovimientoTemp S	
 			--------------------------------------------------------------------------------------------------
-			INSERT @NuevasTF (
-				TFVieja
-				,TFNueva
-			)
-			SELECT
-				TF
-				,TFNueva
-			FROM @MovimientoTemp M
-			WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'
+			--INSERT @NuevasTF (
+			--	TFVieja
+			--	,TFNueva
+			--)
+			--SELECT
+			--	TF
+			--	,TFNueva
+			--FROM @MovimientoTemp M
+			--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'
 			--------------------------------------------------------------------------------------------------
 			-- Nuevos movimientos por renovacion
 	
 			INSERT @MovimientoTemp (
+			Nombre 
+			,TF 
+			,FechaMovimiento 
+			,Monto 
+			,Descripcion
+			,Referencia
+			,TFNueva 
 			)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
 			SELECT
-
+				'Renovacion de TF'
+				,TF.Codigo
+				,@fechaActual
+				,TCTMXRNMM.Monto
+				,'Renovacion de TF'
+				,
 			FROM CTM S
 			INNER JOIN TF ON S.Id = TF.IdCT
 			INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
@@ -348,6 +378,7 @@ BEGIN
 			INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
 			WHERE TF.FechaCaducacion<=@fechaActual	 
 			--------------------------------------------------------------------------------------------------
+
 
 			INSERT @MovInteresesCorr (
 				MontoDebitoInteresesCorrientes
