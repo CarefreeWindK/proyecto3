@@ -1,6 +1,6 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 04/06/2023 3:08:33 pm ******/
+/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 8/6/2023 10:27:18 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -56,6 +56,9 @@ BEGIN
 	DECLARE @TMTITemp TABLE (
         Nombre VARCHAR(64)
 		,Accion VARCHAR(16)
+    )
+	DECLARE @NuevaTFTemp TABLE (
+       NumeroTarjetaFisica VARCHAR(32)
     )
 
     -- Cargar los datos del XML en la variable de tabla
@@ -140,7 +143,13 @@ BEGIN
         T.X.value('@Nombre', 'VARCHAR(64)') AS Nombre
 		, T.X.value('@Accion', 'VARCHAR(16)') AS Accion
     FROM @XmlData.nodes('/root/TMTI/TMTI') AS T(X)
-
+--------------------------------------------------------------------------------------------------
+	INSERT INTO @NuevaTFTemp (
+       NumeroTarjetaFisica 
+    )
+    SELECT 
+        T.X.value('@Numero', 'VARCHAR(32)') AS NumeroTarjetaFisica 
+    FROM @XmlData.nodes('/root/NuevasTF/NuevaTF') AS T(X)
 
 
     -- Realizar operaciones en base a los datos de la variable de tabla
@@ -241,8 +250,15 @@ BEGIN
 		,S.Accion
     FROM @TMTITemp S
 
+	INSERT INTO [dbo].[NuevaTF]
+               (
+                [NumeroTarjetaFisica]
+               )/*Inserta en la tabla TMTI*/
+	SELECT 
+         S.NumeroTarjetaFisica 
+    FROM @NuevaTFTemp S
 	--------------------------------------------------------------------------------------------------
-	INSERT INTO [dbo].[TCTXRN] (
+	INSERT INTO [dbo].[TCTMXRN] (
 		[IdRN]
 		, [IdTCTM]
 		)
@@ -251,63 +267,61 @@ BEGIN
 		T.Id AS IdCTM
 	FROM TCTM T
 	INNER JOIN RN ON T.Id = RN.IdTCTM
-
-
-
-	INSERT INTO [dbo].[TCTXRNTasa] (
+	--------------------------------------------------------------------------------------------------
+	INSERT INTO [dbo].[TCTMXRNTasa] (
 		[Id]
 		) 
 	SELECT 
 		S.Id
-	FROM TCTXRN S
+	FROM TCTMXRN S
 	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=1
 
-	UPDATE TCTXRNTasa
+	UPDATE TCTMXRNTasa
 	SET Tasa = RNTemp.Valor
-	FROM TCTXRNTasa
-	INNER JOIN @RNTemp AS RNTemp ON TCTXRNTasa.Id = RNTemp.Id
+	FROM TCTMXRNTasa
+	INNER JOIN @RNTemp AS RNTemp ON TCTMXRNTasa.Id = RNTemp.Id
 	WHERE RNTemp.TRN = 'Porcentaje';
 	--------------------------------------------------------------------------------------------------
-	INSERT INTO [dbo].[TCTXRNQDias] (
+	INSERT INTO [dbo].[TCTMXRNQDias] (
 		[Id]
 		) 
 	SELECT 
 		S.Id
-	FROM TCTXRN S
+	FROM TCTMXRN S
 	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=2
 
-	UPDATE TCTXRNQDias
+	UPDATE TCTMXRNQDias
 	SET QDias = RNTemp.Valor
-	FROM TCTXRNQDias
-	INNER JOIN @RNTemp AS RNTemp ON TCTXRNQDias.Id = RNTemp.Id
+	FROM TCTMXRNQDias
+	INNER JOIN @RNTemp AS RNTemp ON TCTMXRNQDias.Id = RNTemp.Id
 	WHERE RNTemp.TRN = 'Cantidad de Dias';
 	--------------------------------------------------------------------------------------------------
-	INSERT INTO [dbo].[TCTXRNQOP] (
+	INSERT INTO [dbo].[TCTMXRNQOP] (
 		[Id]
 		) 
 	SELECT 
 		S.Id
-	FROM TCTXRN S
+	FROM TCTMXRN S
 	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=3
 
-	UPDATE TCTXRNQOP
+	UPDATE TCTMXRNQOP
 	SET QOperaciones = RNTemp.Valor
-	FROM TCTXRNQOP
-	INNER JOIN @RNTemp AS RNTemp ON TCTXRNQOP.Id = RNTemp.Id
+	FROM TCTMXRNQOP
+	INNER JOIN @RNTemp AS RNTemp ON TCTMXRNQOP.Id = RNTemp.Id
 	WHERE RNTemp.TRN = 'Cantidad de Operaciones';
 	--------------------------------------------------------------------------------------------------
-	INSERT INTO [dbo].[TCTXRNMM] (
+	INSERT INTO [dbo].[TCTMXRNMM] (
 		[Id]
 		) 
 	SELECT 
 		S.Id
-	FROM TCTXRN S
+	FROM TCTMXRN S
 	WHERE (SELECT R.IdTRN FROM RN R WHERE R.ID=S.IdRN)=4
 
-	UPDATE TCTXRNMM
+	UPDATE TCTMXRNMM
 	SET Monto = RNTemp.Valor
-	FROM TCTXRNMM
-	INNER JOIN @RNTemp AS RNTemp ON TCTXRNMM.Id = RNTemp.Id
+	FROM TCTMXRNMM
+	INNER JOIN @RNTemp AS RNTemp ON TCTMXRNMM.Id = RNTemp.Id
 	WHERE RNTemp.TRN = 'Monto Monetario';
     
 	DROP TABLE TDITemp;
