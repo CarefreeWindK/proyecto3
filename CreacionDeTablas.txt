@@ -31,6 +31,7 @@ CREATE TABLE dbo.CTM
 	, PagoMinimo INT
 	, SaldoCorteEC INT
 	, FechaCorte DATE
+	, LastECId INT
 	, SaldoInteresesCorrientes INT
 	, IdTCTM INT  -- FK TCTM
 );
@@ -67,6 +68,11 @@ CREATE TABLE dbo.TF
   , IdMI INT  --FK MI
   , EsValida BIT
 );
+CREATE TABLE NuevaTF(
+Id INT IDENTITY (1,1) NOT NULL PRIMARY KEY
+,NumeroTarjetaFisica VARCHAR(16)
+,Usado BIT DEFAULT (0)
+)
 
 CREATE TABLE dbo.EC
 (
