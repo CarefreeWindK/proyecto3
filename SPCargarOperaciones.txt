@@ -6,7 +6,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE [dbo].[CargarOperacionesXML]
+ALTER PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -340,15 +340,15 @@ BEGIN
 			--	,dbo.CodigoTFToIdCT(S.TF)
 			--FROM @MovimientoTemp S	
 			------------------------------------------------------------------------------------------------
-			INSERT @NuevasTF (
-				TFVieja
-				,TFNueva
-			)
-			SELECT
-				TF
-				,TFNueva
-			FROM @MovimientoTemp M
-			WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'
+			--INSERT @NuevasTF (
+			--	TFVieja
+			--	,TFNueva
+			--)
+			--SELECT
+			--	TF
+			--	,TFNueva
+			--FROM @MovimientoTemp M
+			--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'
 			--------------------------------------------------------------------------------------------------
 			-- Nuevos movimientos por renovacion
 			
@@ -435,6 +435,8 @@ BEGIN
 			SET Codigo = R.CodigoNuevo
 			FROM TF
 			INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo;
+
+			DELETE @ResultadosTemp
 			--------------------------------------------------------------------------------------------------
 
 
