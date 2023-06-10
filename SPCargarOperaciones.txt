@@ -1,15 +1,17 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 29/05/2023 3:23:39 pm ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 10/6/2023 10:07:32 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [dbo].[CargarOperacionesXML]
+CREATE PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
+	SET NOCOUNT ON;
+    BEGIN TRY
     -- Declarar la variable de tabla para almacenar los datos del XML
 	DECLARE @ADMIN BIT = 1
 
@@ -182,7 +184,7 @@ BEGIN
 			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
 			--------------------------------------------------------------------------------------------------
 			-- Realizar operaciones en base a los datos de la variable de tabla
-    
+
 			INSERT INTO TH(
 				Nombre
 				,ValorDocIdentidad
@@ -308,23 +310,34 @@ BEGIN
 			INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
 			------------------------------------------------------------------------------------------------
 			--INSERT INTO EC(
-			--	 Fecha
-			--	 ,Saldo
-			--	 ,QPagos
-			--	 ,QCreditos
-			--	 ,SUMCreditos
-			--	 ,SUMPagos
-			--	 ,SUMPagosAntesFechaPagoMin
-			--	 ,PagoContado
+			
+			--	 Saldo
 			--	 ,PagoMin
+			--	 ,Fecha
 			--	 ,IntereseCorrientes
 			--	 ,InteresMoratorios
 			--	 ,ContadorATM
 			--	 ,ContadorVentanilla
+			--	 ,SUMPagosAntesFechaPagoMin
+			--	 ,SUMPagos
+			--	 ,QPagos
+			--   ,SUMCompras
+			--   ,QCompras
+			--   ,SUMRetiros
+			--   ,QRetiros
+			--	 ,SUMCreditos
+			--	 ,QCreditos
+			--   ,SUMDebitos
+			--   ,QDebitos			
 			--	 ,IdCTM
 			--	 )
 			--SELECT 
-			--	 @fechaActual
+			--	,0
+			--	,0
+			--	,@fecha
+			--	,0
+			--	,0
+			--	,0
 			--	,0
 			--	,0
 			--	,0
@@ -348,10 +361,39 @@ BEGIN
 			--	TF
 			--	,TFNueva
 			--FROM @MovimientoTemp M
-			--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'
+			--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'	
 			--------------------------------------------------------------------------------------------------
+
+
+			--INSERT @MovInteresesCorr (
+			--	MontoDebitoInteresesCorrientes
+			--	,SaldoInteresesCorrientes
+			--)
+			--SELECT
+			--	S.Saldo*TCTMXRNTasa.Tasa/100/30
+			--	,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
+			--FROM CTM S
+			--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+			--INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
+			--WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
+
+			----------------------------------------------------------------------------------------------------
+			--INSERT @MovInteresesMor (... monto, )
+			--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
+			--FROM CTM 
+			--inner join EC.Id=CTM.LastId
+			--WHERE EC.SumaPagos<EC.PagoMinimo
+			--.....  -- sacar la tasa de interes de RN
+			--WHERE CTM.Saldo>0
+			----------------------------------------------------------------------------------------------------
+		DELETE FROM @THTemp
+		DELETE FROM @NTCMTemp
+		DELETE FROM @NTCATemp
+		DELETE FROM @NTFTemp
+		END
+		--------------------------------------------------------------------------------------------------
 			-- Nuevos movimientos por renovacion
-			
+			BEGIN TRANSACTION tNuevaTF
 
 			INSERT @MovimientoTemp (
 			Nombre 
@@ -432,44 +474,40 @@ BEGIN
 			INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
 			UPDATE TF
-			SET Codigo = R.CodigoNuevo
+			SET 
+			Codigo = R.CodigoNuevo
+			,FechaCaducacion = CONVERT(VARCHAR(7), DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 101)
 			FROM TF
-			INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo;
+			INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
+			WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
+			DELETE FROM @ResultadosTemp
 
-			DELETE @ResultadosTemp
-			--------------------------------------------------------------------------------------------------
+			COMMIT TRANSACTION tNuevaTF
+			
 
-
-			--INSERT @MovInteresesCorr (
-			--	MontoDebitoInteresesCorrientes
-			--	,SaldoInteresesCorrientes
-			--)
-			--SELECT
-			--	S.Saldo*TCTMXRNTasa.Tasa/100/30
-			--	,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
-			--FROM CTM S
-			--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
-			--INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
-			--WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
-
-			----------------------------------------------------------------------------------------------------
-			--INSERT @MovInteresesMor (... monto, )
-			--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
-			--FROM CTM 
-			--inner join EC.Id=CTM.LastId
-			--WHERE EC.SumaPagos<EC.PagoMinimo
-			--.....  -- sacar la tasa de interes de RN
-			--WHERE CTM.Saldo>0
-			----------------------------------------------------------------------------------------------------
-		DELETE @THTemp
-		DELETE @NTCMTemp
-		DELETE @NTCATemp
-		DELETE @NTFTemp
-		END
-		--------------------------------------------------------------------------------------------------
 		-----Fecha de Corte-----
 			
 		SET @fechaActual = DATEADD(DAY, 1, @fechaActual);
 	END;
+	END TRY
+	BEGIN CATCH   
+	IF @@TRANCOUNT>0  -- Error sucedio dentro de la transacción
+        BEGIN
+            ROLLBACK TRANSACTION tNuevaTF; -- Se deshacen los cambios realizados
+        END;
+    INSERT INTO dbo.DBErrors
+    
+		VALUES (
+		  SUSER_SNAME(),
+		  ERROR_NUMBER(),
+		  ERROR_STATE(),
+		  ERROR_SEVERITY(),
+		  ERROR_LINE(),
+		  ERROR_PROCEDURE(),
+		  ERROR_MESSAGE(),
+		  GETDATE()
+		);
 
+	  END CATCH
+	SET NOCOUNT OFF;
 END
