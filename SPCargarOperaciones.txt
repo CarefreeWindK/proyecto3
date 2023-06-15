@@ -1,513 +1,506 @@
-USE [bd2]
-GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 10/6/2023 10:07:32 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
-CREATE PROCEDURE [dbo].[CargarOperacionesXML]
+ALTER PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
-	SET NOCOUNT ON;
+	--SET NOCOUNT ON;
     BEGIN TRY
-    -- Declarar la variable de tabla para almacenar los datos del XML
-	DECLARE @ADMIN BIT = 1
 
-	-- Definir fechas de inicio y fin
-	DECLARE @fechaInicio DATE;
+		DECLARE @ADMIN BIT = 1
 
-	DECLARE @fechaFin DATE;
+		-- Definir fechas de inicio y fin
+		DECLARE @fechaInicio DATE;
 
-	DECLARE @fechaActual DATE;
+		DECLARE @fechaFin DATE;
 
-	DECLARE @fecha VARCHAR(16);
+		DECLARE @fechaActual DATE;
 
-    DECLARE @THTemp TABLE (
-        Nombre VARCHAR(32)
-        ,TipoDocIdentidad VARCHAR(32)
-		,ValorDocIdentidad VARCHAR(32)
-		,NombreUsuario VARCHAR(32)
-		,[Password] VARCHAR(32)
-    )
+		DECLARE @fecha VARCHAR(16);
 
-	DECLARE @NTCMTemp TABLE (
-        Codigo VARCHAR(32)
-        ,TipoCTM VARCHAR(32)
-		,LimiteDeCredito VARCHAR(32)
-		,TH VARCHAR(32)
-		,FechaOperacion VARCHAR(512)
-    )
+		DECLARE @ResultadosTemp TABLE (
+					CodigoNuevo VARCHAR(16)
+					,CodigoViejo VARCHAR(16)
+					);
+
+		DECLARE @THTemp TABLE (
+			Nombre VARCHAR(32)
+			,TipoDocIdentidad VARCHAR(32)
+			,ValorDocIdentidad VARCHAR(32)
+			,NombreUsuario VARCHAR(32)
+			,[Password] VARCHAR(32)
+		)
+
+		DECLARE @NTCMTemp TABLE (
+			Codigo VARCHAR(32)
+			,TipoCTM VARCHAR(32)
+			,LimiteDeCredito VARCHAR(32)
+			,TH VARCHAR(32)
+			,FechaOperacion VARCHAR(512)
+		)
 	
-	DECLARE @NTCATemp TABLE (
-        CodigoTCM VARCHAR(32)
-        ,CodigoTCA VARCHAR(32)
-		,TH  VARCHAR(32)
-   )
+		DECLARE @NTCATemp TABLE (
+			CodigoTCM VARCHAR(32)
+			,CodigoTCA VARCHAR(32)
+			,TH  VARCHAR(32)
+	   )
 
-   DECLARE @NTFTemp TABLE (
-        Codigo VARCHAR(32)
-        ,TCAsociada VARCHAR(32)
-		,FechaVencimiento VARCHAR(32)
-		,CCV  VARCHAR(32)
-   )
+	   DECLARE @NTFTemp TABLE (
+			Codigo VARCHAR(32)
+			,TCAsociada VARCHAR(32)
+			,FechaVencimiento VARCHAR(32)
+			,CCV  VARCHAR(32)
+	   )
 
-   DECLARE @MovimientoTemp TABLE (
-        Nombre VARCHAR(128)
-		,TF VARCHAR(32)
-        ,FechaMovimiento VARCHAR(32)
-		,Monto VARCHAR(32)
-		,Descripcion VARCHAR(32)
-		,Referencia VARCHAR(32)
-   )
-   DECLARE @Fechas TABLE (
-		Id INT IDENTITY (1,1) 
-        ,Fechas DATE
-   )
+	   DECLARE @MovimientoTemp TABLE (
+			Nombre VARCHAR(128)
+			,TF VARCHAR(32)
+			,FechaMovimiento VARCHAR(32)
+			,Monto VARCHAR(32)
+			,Descripcion VARCHAR(32)
+			,Referencia VARCHAR(32)
+	   )
+	   DECLARE @Fechas TABLE (
+			Id INT IDENTITY (1,1) 
+			,Fechas DATE
+	   )
 
-   DECLARE @MovInteresesCorr TABLE(
-		MontoDebitoInteresesCorrientes REAL
-		,SaldoInteresesCorrientes REAL
-   )
+	   DECLARE @MovInteresesCorr TABLE(
+			MontoDebitoInteresesCorrientes REAL
+			,SaldoInteresesCorrientes REAL
+	   )
 
-   DECLARE @MovInteresesMor TABLE(
-		MontoPagoMinimoMoratorio REAL
-		,MontoDebitoInteresesMoratorios REAL
-		,SaldoInteresesMoratorios REAL
-   )
+	   DECLARE @MovInteresesMor TABLE(
+			MontoPagoMinimoMoratorio REAL
+			,MontoDebitoInteresesMoratorios REAL
+			,SaldoInteresesMoratorios REAL
+	   )
 
-    -- Cargar los datos del XML en la variable de tabla
-    DECLARE @XmlData XML
-    DECLARE @OpenRowsetCmd NVARCHAR(MAX)
-    SET @OpenRowsetCmd = 'SELECT @XmlData = CONVERT(XML, BulkColumn) FROM OPENROWSET(BULK ''' + @inPathXML + ''', SINGLE_BLOB) AS x'
-    EXEC sp_executesql @OpenRowsetCmd, N'@XmlData XML OUTPUT', @XmlData OUTPUT
+		-- Cargar los datos del XML en la variable de tabla
+		DECLARE @XmlData XML
+		DECLARE @OpenRowsetCmd NVARCHAR(MAX)
+		SET @OpenRowsetCmd = 'SELECT @XmlData = CONVERT(XML, BulkColumn) FROM OPENROWSET(BULK ''' + @inPathXML + ''', SINGLE_BLOB) AS x'
+		EXEC sp_executesql @OpenRowsetCmd, N'@XmlData XML OUTPUT', @XmlData OUTPUT
 
-	INSERT INTO @Fechas (
-        Fechas
-    )
-	SELECT CONVERT
-	(DATE, T.X.value('@Fecha', 'VARCHAR(32)'), 120) AS Fecha
-    FROM @XmlData.nodes('/root/fechaOperacion') AS T(X)
+		INSERT INTO @Fechas (
+			Fechas
+		)
+		SELECT CONVERT
+		(DATE, T.X.value('@Fecha', 'VARCHAR(32)'), 120) AS Fecha
+		FROM @XmlData.nodes('/root/fechaOperacion') AS T(X)
 
-	SELECT @fechaInicio = F.Fechas
-    FROM @Fechas F
-    WHERE F.Id = 1
+		SELECT @fechaInicio = F.Fechas
+		FROM @Fechas F
+		WHERE F.Id = 1
 
-	SELECT @fechaFin = MAX(F.Fechas)
-    FROM @Fechas F
-	SET @fechaActual = @fechaInicio;
+		SELECT @fechaFin = MAX(F.Fechas)
+		FROM @Fechas F
+		SET @fechaActual = @fechaInicio;
 
-	WHILE @fechaActual <= @fechaFin
-	BEGIN
-	
-	SET @fecha=CAST(@fechaActual AS VARCHAR(16));
-
-	IF EXISTS (SELECT Fechas FROM @Fechas S WHERE @fechaActual = S.Fechas)
+		WHILE @fechaActual <= @fechaFin
 		BEGIN
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO @THTemp (
-				Nombre
-				,TipoDocIdentidad 
-				,ValorDocIdentidad 
-				,NombreUsuario 
-				,[Password]
-			)
-			SELECT 
-				T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
-				,T.X.value('@Tipo_Doc_Identidad', 'VARCHAR(32)') AS TipoDocIdentidad
-				,T.X.value('@Valor_Doc_Identidad', 'VARCHAR(32)') AS ValorDocIdentidad
-				,T.X.value('@NombreUsuario', 'VARCHAR(32)') AS NombreUsuario
-				,T.X.value('@Password', 'VARCHAR(32)') AS [Password]
-			FROM @XmlData.nodes('/root/fechaOperacion/TH/TH') AS T(X)
-			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO @NTCMTemp  (
-				 Codigo 
-				,TipoCTM 
-				,LimiteDeCredito 
-				,TH
-				,FechaOperacion
-			)
-			SELECT 
-				T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
-				,T.X.value('@TipoCTM', 'VARCHAR(32)') AS TipoCTM
-				,T.X.value('@LimiteCredito', 'VARCHAR(32)') AS LimiteDeCredito
-				,T.X.value('@TH', 'VARCHAR(32)') AS TH
-				,A.B.value('@Fecha', 'VARCHAR(32)') AS FechaOperacion
-			FROM @XmlData.nodes('/root/fechaOperacion/NTCM/NTCM') AS T(X)
-			CROSS APPLY T.X.nodes('../..') AS A(B)
-			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO @NTCATemp  (
-				CodigoTCM 
-				,CodigoTCA 
-				,TH  
-			)
-			SELECT 
-				T.X.value('@CodigoTCM', 'VARCHAR(32)') AS CodigoTCM
-				,T.X.value('@CodigoTCA', 'VARCHAR(32)') AS CodigoTCA
-				,T.X.value('@TH', 'VARCHAR(32)') AS TH
-			FROM @XmlData.nodes('/root/fechaOperacion/NTCA/NTCA') AS T(X)
-			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO @NTFTemp  (
-				Codigo
-				,TCAsociada 
-				,FechaVencimiento 
-				,CCV 
-			)
-			SELECT 
-				T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
-				,T.X.value('@TCAsociada', 'VARCHAR(32)') AS TCAsociada
-				,T.X.value('@FechaVencimiento', 'VARCHAR(32)') AS FechaVencimiento
-				,T.X.value('@CCV', 'VARCHAR(32)') AS CCV
-			FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
-			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO @MovimientoTemp  (
-				Nombre 
-				,TF 
-				,FechaMovimiento 
-				,Monto
-				,Descripcion 
-				,Referencia 
-			)
-			SELECT 
-				T.X.value('@Nombre', 'VARCHAR(128)') AS Nombre
-				,T.X.value('@TF', 'VARCHAR(32)') AS TF
-				,T.X.value('@FechaMovimiento', 'VARCHAR(32)') AS FechaMovimiento
-				,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
-				,T.X.value('@Descripcion', 'VARCHAR(32)') AS Descripcion
-				,T.X.value('@Referencia', 'VARCHAR(32)') AS Referencia
-			FROM @XmlData.nodes('/root/fechaOperacion/Movimiento/Movimiento') AS T(X)
-			WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
-			--------------------------------------------------------------------------------------------------
-			-- Realizar operaciones en base a los datos de la variable de tabla
+	
+		SET @fecha=CAST(@fechaActual AS VARCHAR(16));
 
-			INSERT INTO TH(
-				Nombre
-				,ValorDocIdentidad
-				,IdTDTH
+		IF EXISTS (SELECT Fechas FROM @Fechas S WHERE @fechaActual = S.Fechas)
+			BEGIN
+				DELETE FROM @THTemp;
+				DELETE FROM @NTCMTemp;
+				DELETE FROM @NTCATemp;
+				DELETE FROM @NTFTemp;
+				-- Se limpian las tablas temporales para que no tengan informacion repetida
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO @THTemp (
+					Nombre
+					,TipoDocIdentidad 
+					,ValorDocIdentidad 
+					,NombreUsuario 
+					,[Password]
 				)
-			SELECT 
-				S.Nombre
-				,S.ValorDocIdentidad
-				,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
-			FROM @THTemp S
-
-			INSERT INTO Usuario(
-				NombreUsuario
-				,EsAdmin
-				,Pin
+				SELECT 
+					T.X.value('@Nombre', 'VARCHAR(32)') AS Nombre
+					,T.X.value('@Tipo_Doc_Identidad', 'VARCHAR(32)') AS TipoDocIdentidad
+					,T.X.value('@Valor_Doc_Identidad', 'VARCHAR(32)') AS ValorDocIdentidad
+					,T.X.value('@NombreUsuario', 'VARCHAR(32)') AS NombreUsuario
+					,T.X.value('@Password', 'VARCHAR(32)') AS [Password]
+				FROM @XmlData.nodes('/root/fechaOperacion/TH/TH') AS T(X)
+				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO @NTCMTemp  (
+					 Codigo 
+					,TipoCTM 
+					,LimiteDeCredito 
+					,TH
+					,FechaOperacion
 				)
-			 SELECT 
-				S.NombreUsuario
-				,0
-				,S.[Password]
-			FROM @THTemp S
-
-			UPDATE Usuario
-			SET IdTH = TH.Id
-			FROM Usuario
-			INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
-			INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
-			WHERE Usuario.EsAdmin = 0;
-	
-			UPDATE TH
-			SET IdUsuario = Usuario.Id
-			FROM TH
-			INNER JOIN Usuario ON TH.Id = Usuario.IdTH
-
-			----------------------------------------------------------------------------------------------------
-
-			INSERT INTO CT(
-				EsMaestra
-				,Codigo
-				,IdTH
+				SELECT 
+					T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
+					,T.X.value('@TipoCTM', 'VARCHAR(32)') AS TipoCTM
+					,T.X.value('@LimiteCredito', 'VARCHAR(32)') AS LimiteDeCredito
+					,T.X.value('@TH', 'VARCHAR(32)') AS TH
+					,A.B.value('@Fecha', 'VARCHAR(32)') AS FechaOperacion
+				FROM @XmlData.nodes('/root/fechaOperacion/NTCM/NTCM') AS T(X)
+				CROSS APPLY T.X.nodes('../..') AS A(B)
+				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO @NTCATemp  (
+					CodigoTCM 
+					,CodigoTCA 
+					,TH  
 				)
-			SELECT
-				1
-				,T.codigo
-				,IdTH=dbo.THvalorDocToid(T.TH)
-			FROM @NTCMTemp T
-
-			INSERT INTO CTM(
-			Id
-			)
-			SELECT
-			Id
-			FROM CT
-			INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
-			WHERE CT.EsMaestra=1
-
-			 UPDATE CTM
-			 SET
-				Saldo=0
-				,PagoMinimo=0
-				,SaldoCorteEC=0
-				,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
-				,SaldoInteresesCorrientes=0
-				,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
-			FROM CTM
-			INNER JOIN CT ON CTM.Id=CT.Id
-			INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
-	
-			----------------------------------------------------------------------------------------------------
-	
-			INSERT INTO CT(
-				EsMaestra
-				,Codigo
-				,IdTH
+				SELECT 
+					T.X.value('@CodigoTCM', 'VARCHAR(32)') AS CodigoTCM
+					,T.X.value('@CodigoTCA', 'VARCHAR(32)') AS CodigoTCA
+					,T.X.value('@TH', 'VARCHAR(32)') AS TH
+				FROM @XmlData.nodes('/root/fechaOperacion/NTCA/NTCA') AS T(X)
+				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO @NTFTemp  (
+					Codigo
+					,TCAsociada 
+					,FechaVencimiento 
+					,CCV 
 				)
-			SELECT
-				0
-				,T.CodigoTCA
-				,IdTH=dbo.THvalorDocToid(T.TH)
-			FROM @NTCATemp T
+				SELECT 
+					T.X.value('@Codigo', 'VARCHAR(32)') AS Codigo
+					,T.X.value('@TCAsociada', 'VARCHAR(32)') AS TCAsociada
+					,T.X.value('@FechaVencimiento', 'VARCHAR(32)') AS FechaVencimiento
+					,T.X.value('@CCV', 'VARCHAR(32)') AS CCV
+				FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
+				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO @MovimientoTemp  (
+					Nombre 
+					,TF 
+					,FechaMovimiento 
+					,Monto
+					,Descripcion 
+					,Referencia 
+				)
+				SELECT 
+					T.X.value('@Nombre', 'VARCHAR(128)') AS Nombre
+					,T.X.value('@TF', 'VARCHAR(32)') AS TF
+					,T.X.value('@FechaMovimiento', 'VARCHAR(32)') AS FechaMovimiento
+					,T.X.value('@Monto', 'VARCHAR(32)') AS Monto
+					,T.X.value('@Descripcion', 'VARCHAR(32)') AS Descripcion
+					,T.X.value('@Referencia', 'VARCHAR(32)') AS Referencia
+				FROM @XmlData.nodes('/root/fechaOperacion/Movimiento/Movimiento') AS T(X)
+				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
+				--------------------------------------------------------------------------------------------------
+				-- Realizar operaciones en base a los datos de la variable de tabla
 
-			INSERT INTO CTA(
-			Id
-			)
-			SELECT
-			Id
-			FROM CT
-			INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
-			WHERE CT.EsMaestra=0
+				INSERT INTO TH(
+					Nombre
+					,ValorDocIdentidad
+					,IdTDTH
+					)
+				SELECT 
+					S.Nombre
+					,S.ValorDocIdentidad
+					,dbo.TDTHnombreToid(S.TipoDocIdentidad) 
+				FROM @THTemp S
+
+				INSERT INTO Usuario(
+					NombreUsuario
+					,EsAdmin
+					,Pin
+					)
+				 SELECT 
+					S.NombreUsuario
+					,0
+					,S.[Password]
+				FROM @THTemp S
+
+				UPDATE Usuario
+				SET IdTH = TH.Id
+				FROM Usuario
+				INNER JOIN TH ON Usuario.Id = TH.Id + dbo.returnNUA(1)
+				INNER JOIN @THTemp AS Temp ON TH.ValorDocIdentidad = Temp.ValorDocIdentidad
+				WHERE Usuario.EsAdmin = 0;
 	
-			UPDATE CTA
-			 SET
-				IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
-			FROM CTA
-			INNER JOIN CT ON CTA.Id=CT.Id
-			INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
+				UPDATE TH
+				SET IdUsuario = Usuario.Id
+				FROM TH
+				INNER JOIN Usuario ON TH.Id = Usuario.IdTH
 
-			--------------------------------------------------------------------------------------------------
+				----------------------------------------------------------------------------------------------------
+
+				INSERT INTO CT(
+					EsMaestra
+					,Codigo
+					,IdTH
+					)
+				SELECT
+					1
+					,T.codigo
+					,IdTH=dbo.THvalorDocToid(T.TH)
+				FROM @NTCMTemp T
+
+				INSERT INTO CTM(
+				Id
+				)
+				SELECT
+				Id
+				FROM CT
+				INNER JOIN @NTCMTemp AS Temp ON CT.Codigo = Temp.Codigo
+				WHERE CT.EsMaestra=1
+
+				 UPDATE CTM
+				 SET
+					Saldo=0
+					,PagoMinimo=0
+					,SaldoCorteEC=0
+					,FechaCorte=CONVERT(DATE, temp.FechaOperacion)
+					,SaldoInteresesCorrientes=0
+					,IdTCTM=dbo.TCTMnombreToid(temp.TipoCTM)
+				FROM CTM
+				INNER JOIN CT ON CTM.Id=CT.Id
+				INNER JOIN @NTCMTemp AS temp ON CT.Codigo =temp.Codigo
 	
-			UPDATE TH
-			SET 
-			IdCT = CT.Id
-			FROM TH
-			INNER JOIN CT ON TH.Id=CT.IdTH
+				----------------------------------------------------------------------------------------------------
+	
+				INSERT INTO CT(
+					EsMaestra
+					,Codigo
+					,IdTH
+					)
+				SELECT
+					0
+					,T.CodigoTCA
+					,IdTH=dbo.THvalorDocToid(T.TH)
+				FROM @NTCATemp T
 
-			--------------------------------------------------------------------------------------------------
-			INSERT INTO TF(
-				 Nombre
-				 ,FechaCaducacion
-				 ,CCV
-				 ,Codigo
-				 ,IdCT
-				 ,EsValida
-				 )
-			SELECT 
-				TH.Nombre
-				,S.FechaVencimiento
-				,S.CCV
-				,S.Codigo
-				,dbo.CodigoToTC(S.TCAsociada)
-				,0
-			FROM @NTFTemp S
-			INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
-			------------------------------------------------------------------------------------------------
-			--INSERT INTO EC(
+				INSERT INTO CTA(
+				Id
+				)
+				SELECT
+				Id
+				FROM CT
+				INNER JOIN @NTCATemp AS Temp ON CT.Codigo = Temp.CodigoTCA
+				WHERE CT.EsMaestra=0
+	
+				UPDATE CTA
+				 SET
+					IdTCM=dbo.CodigoToTC(temp.CodigoTCM)
+				FROM CTA
+				INNER JOIN CT ON CTA.Id=CT.Id
+				INNER JOIN @NTCATemp AS temp ON CT.Codigo =temp.CodigoTCA
+
+				--------------------------------------------------------------------------------------------------
+	
+				UPDATE TH
+				SET 
+				IdCT = CT.Id
+				FROM TH
+				INNER JOIN CT ON TH.Id=CT.IdTH
+
+				--------------------------------------------------------------------------------------------------
+				INSERT INTO TF(
+					 Nombre
+					 ,FechaCaducacion
+					 ,CCV
+					 ,Codigo
+					 ,IdCT
+					 ,EsValida
+					 )
+				SELECT 
+					TH.Nombre
+					,S.FechaVencimiento
+					,S.CCV
+					,S.Codigo
+					,dbo.CodigoToTC(S.TCAsociada)
+					,0
+				FROM @NTFTemp S
+				INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
+				------------------------------------------------------------------------------------------------
+				--INSERT INTO EC(
 			
-			--	 Saldo
-			--	 ,PagoMin
-			--	 ,Fecha
-			--	 ,IntereseCorrientes
-			--	 ,InteresMoratorios
-			--	 ,ContadorATM
-			--	 ,ContadorVentanilla
-			--	 ,SUMPagosAntesFechaPagoMin
-			--	 ,SUMPagos
-			--	 ,QPagos
-			--   ,SUMCompras
-			--   ,QCompras
-			--   ,SUMRetiros
-			--   ,QRetiros
-			--	 ,SUMCreditos
-			--	 ,QCreditos
-			--   ,SUMDebitos
-			--   ,QDebitos			
-			--	 ,IdCTM
-			--	 )
-			--SELECT 
-			--	,0
-			--	,0
-			--	,@fecha
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,0
-			--	,dbo.CodigoTFToIdCT(S.TF)
-			--FROM @MovimientoTemp S	
-			------------------------------------------------------------------------------------------------
-			--INSERT @NuevasTF (
-			--	TFVieja
-			--	,TFNueva
-			--)
-			--SELECT
-			--	TF
-			--	,TFNueva
-			--FROM @MovimientoTemp M
-			--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'	
+				--	 Saldo
+				--	 ,PagoMin
+				--	 ,Fecha
+				--	 ,IntereseCorrientes
+				--	 ,InteresMoratorios
+				--	 ,ContadorATM
+				--	 ,ContadorVentanilla
+				--	 ,SUMPagosAntesFechaPagoMin
+				--	 ,SUMPagos
+				--	 ,QPagos
+				--   ,SUMCompras
+				--   ,QCompras
+				--   ,SUMRetiros
+				--   ,QRetiros
+				--	 ,SUMCreditos
+				--	 ,QCreditos
+				--   ,SUMDebitos
+				--   ,QDebitos			
+				--	 ,IdCTM
+				--	 )
+				--SELECT 
+				--	,0
+				--	,0
+				--	,@fecha
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,0
+				--	,dbo.CodigoTFToIdCT(S.TF)
+				--FROM @MovimientoTemp S	
+				------------------------------------------------------------------------------------------------
+				--INSERT @NuevasTF (
+				--	TFVieja
+				--	,TFNueva
+				--)
+				--SELECT
+				--	TF
+				--	,TFNueva
+				--FROM @MovimientoTemp M
+				--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'	
+				--------------------------------------------------------------------------------------------------
+
+
+				--INSERT @MovInteresesCorr (
+				--	MontoDebitoInteresesCorrientes
+				--	,SaldoInteresesCorrientes
+				--)
+				--SELECT
+				--	S.Saldo*TCTMXRNTasa.Tasa/100/30
+				--	,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
+				--FROM CTM S
+				--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+				--INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
+				--WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
+
+				----------------------------------------------------------------------------------------------------
+				--INSERT @MovInteresesMor (... monto, )
+				--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
+				--FROM CTM 
+				--inner join EC.Id=CTM.LastId
+				--WHERE EC.SumaPagos<EC.PagoMinimo
+				--.....  -- sacar la tasa de interes de RN
+				--WHERE CTM.Saldo>0
+				----------------------------------------------------------------------------------------------------
+			END
 			--------------------------------------------------------------------------------------------------
+				-- Nuevos movimientos por renovacion
+				--BEGIN TRANSACTION tNuevaTF
+
+				--INSERT @MovimientoTemp (
+				--Nombre 
+				--,TF 
+				--,FechaMovimiento 
+				--,Monto 
+				--,Descripcion
+				--,Referencia
+				--)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
+				--SELECT
+				--	'Renovacion de TF'
+				--	,TF.Codigo
+				--	,@fecha
+				--	,TCTMXRNMM.Monto
+				--	,'Renovacion de TF'
+				--	, (SELECT CONCAT(
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+				--		CHAR(FLOOR(RAND() * 10) + 48),
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+				--		CHAR(FLOOR(RAND() * 10) + 48),
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
+				--		))
+				--FROM CTM S
+				--INNER JOIN TF ON S.Id = TF.IdCT
+				--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+				--INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
+				--WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
+				--AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual) 
+
+				--INSERT @MovimientoTemp (
+				--Nombre 
+				--,TF 
+				--,FechaMovimiento 
+				--,Monto 
+				--,Descripcion
+				--,Referencia
+				--)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTA
+				--SELECT
+				--	'Renovacion de TF'
+				--	,TF.Codigo
+				--	,@fecha
+				--	,TCTMXRNMM.Monto
+				--	,'Renovacion de TF'
+				--	, (SELECT CONCAT(
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+				--		CHAR(FLOOR(RAND() * 10) + 48),
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+				--		CHAR(FLOOR(RAND() * 10) + 48),
+				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
+				--		))
+				--FROM CTA S
+				--INNER JOIN TF ON S.Id = TF.IdCT
+				--INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
+				--INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
+				--WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
+				--AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual)
 
 
-			--INSERT @MovInteresesCorr (
-			--	MontoDebitoInteresesCorrientes
-			--	,SaldoInteresesCorrientes
-			--)
-			--SELECT
-			--	S.Saldo*TCTMXRNTasa.Tasa/100/30
-			--	,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
-			--FROM CTM S
-			--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
-			--INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
-			--WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
 
-			----------------------------------------------------------------------------------------------------
-			--INSERT @MovInteresesMor (... monto, )
-			--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
-			--FROM CTM 
-			--inner join EC.Id=CTM.LastId
-			--WHERE EC.SumaPagos<EC.PagoMinimo
-			--.....  -- sacar la tasa de interes de RN
-			--WHERE CTM.Saldo>0
-			----------------------------------------------------------------------------------------------------
-		DELETE FROM @THTemp
-		DELETE FROM @NTCMTemp
-		DELETE FROM @NTCATemp
-		DELETE FROM @NTFTemp
-		END
-		--------------------------------------------------------------------------------------------------
-			-- Nuevos movimientos por renovacion
-			BEGIN TRANSACTION tNuevaTF
+				--INSERT INTO @ResultadosTemp (
+				--	CodigoNuevo
+				--	,CodigoViejo
+				--)
+				--SELECT NuevaTF.NumeroTarjetaFisica
+				--,M.TF
+				--FROM TF
+				--INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
+				--INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
+				--WHERE M.Nombre = 'Renovacion de TF';
 
-			INSERT @MovimientoTemp (
-			Nombre 
-			,TF 
-			,FechaMovimiento 
-			,Monto 
-			,Descripcion
-			,Referencia
-			)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
-			SELECT
-				'Renovacion de TF'
-				,TF.Codigo
-				,@fecha
-				,TCTMXRNMM.Monto
-				,'Renovacion de TF'
-				, (SELECT CONCAT(
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-					CHAR(FLOOR(RAND() * 10) + 48),
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-					CHAR(FLOOR(RAND() * 10) + 48),
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-					))
-			FROM CTM S
-			INNER JOIN TF ON S.Id = TF.IdCT
-			INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
-			INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-			WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
-			AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual) 
+				--UPDATE NuevaTF
+				--SET Usado=1
+				--FROM NuevaTF
+				--INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
-			INSERT @MovimientoTemp (
-			Nombre 
-			,TF 
-			,FechaMovimiento 
-			,Monto 
-			,Descripcion
-			,Referencia
-			)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTA
-			SELECT
-				'Renovacion de TF'
-				,TF.Codigo
-				,@fecha
-				,TCTMXRNMM.Monto
-				,'Renovacion de TF'
-				, (SELECT CONCAT(
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-					CHAR(FLOOR(RAND() * 10) + 48),
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-					CHAR(FLOOR(RAND() * 10) + 48),
-					CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-					))
-			FROM CTA S
-			INNER JOIN TF ON S.Id = TF.IdCT
-			INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
-			INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-			WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
-			AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual)
+				--UPDATE TF
+				--SET 
+				--Codigo = R.CodigoNuevo
+				--,FechaCaducacion =CONVERT(VARCHAR(7), DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 0)
+				--FROM TF
+				--INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
+				--WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
+				--DELETE FROM @ResultadosTemp
 
-
-			DECLARE @ResultadosTemp TABLE (
-				CodigoNuevo VARCHAR(16)
-                ,CodigoViejo VARCHAR(16)
-				);
-
-			INSERT INTO @ResultadosTemp (
-				CodigoNuevo
-				,CodigoViejo
-			)
-			SELECT NuevaTF.NumeroTarjetaFisica
-			,M.TF
-			FROM TF
-			INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
-			INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
-			WHERE M.Nombre = 'Renovacion de TF';
-
-			UPDATE NuevaTF
-			SET Usado=1
-			FROM NuevaTF
-			INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
-
-			UPDATE TF
-			SET 
-			Codigo = R.CodigoNuevo
-			,FechaCaducacion = CONVERT(VARCHAR(7), DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 101)
-			FROM TF
-			INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
-			WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
-			DELETE FROM @ResultadosTemp
-
-			COMMIT TRANSACTION tNuevaTF
+				--COMMIT TRANSACTION tNuevaTF
 			
 
 		-----Fecha de Corte-----
 			
 		SET @fechaActual = DATEADD(DAY, 1, @fechaActual);
-	END;
-	END TRY
-	BEGIN CATCH   
-	IF @@TRANCOUNT>0  -- Error sucedio dentro de la transacción
-        BEGIN
-            ROLLBACK TRANSACTION tNuevaTF; -- Se deshacen los cambios realizados
-        END;
-    INSERT INTO dbo.DBErrors
+		END
+	END TRY 
+	BEGIN CATCH
+		IF @@TRANCOUNT>0  -- Error sucedio dentro de la transacción
+			BEGIN
+				ROLLBACK TRANSACTION tNuevaTF; -- Se deshacen los cambios realizados
+			END;
+		INSERT INTO dbo.DBErrors
     
-		VALUES (
-		  SUSER_SNAME(),
-		  ERROR_NUMBER(),
-		  ERROR_STATE(),
-		  ERROR_SEVERITY(),
-		  ERROR_LINE(),
-		  ERROR_PROCEDURE(),
-		  ERROR_MESSAGE(),
-		  GETDATE()
-		);
-
-	  END CATCH
-	SET NOCOUNT OFF;
+			VALUES (
+			  SUSER_SNAME(),
+			  ERROR_NUMBER(),
+			  ERROR_STATE(),
+			  ERROR_SEVERITY(),
+			  ERROR_LINE(),
+			  ERROR_PROCEDURE(),
+			  ERROR_MESSAGE(),
+			  GETDATE()
+			);
+	END CATCH
+	--SET NOCOUNT OFF;
 END
