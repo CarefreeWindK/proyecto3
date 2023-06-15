@@ -61,7 +61,7 @@ CREATE TABLE dbo.TF
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
   , Nombre VARCHAR(32)
-  , FechaCaducacion VARCHAR(32)
+  , FechaCaducacion DATE
   , CCV VARCHAR(32) NOT NULL -- Codigo de la tarjeta asociada
   , Codigo VARCHAR(64) NOT NULL -- Codigo de la tarjeta asociada
   , IdCT INT  --FK CT
