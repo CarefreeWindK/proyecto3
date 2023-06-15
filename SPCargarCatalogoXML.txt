@@ -1,6 +1,6 @@
-USE [bd2]
+ USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 8/6/2023 10:27:18 ******/
+/****** Object:  StoredProcedure [dbo].[CargarCatalogoXML]    Script Date: 15/6/2023 14:32:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -324,21 +324,54 @@ BEGIN
 	INNER JOIN @RNTemp AS RNTemp ON TCTMXRNMM.Id = RNTemp.Id
 	WHERE RNTemp.TRN = 'Monto Monetario';
     
-	DROP TABLE TDITemp;
+	DELETE FROM @TDITemp;
+	IF OBJECT_ID('tempdb..@TDITemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #TDITemp;
+	END
 
-	DROP TABLE TCTMTemp;
+	DELETE FROM @TCTMTemp;
+	IF OBJECT_ID('tempdb..@TCTMTemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #TCTMTemp;
+	END
 
-	DROP TABLE TRNTemp;
+	DELETE FROM @TRNTemp;
+	IF OBJECT_ID('tempdb..@TRNTemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #TRNTemp;
+	END
 
-	DROP TABLE RNTemp;
+	DELETE FROM @RNTemp;
+	IF OBJECT_ID('tempdb..@RNTemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #RNTemp;
+	END
 
-	DROP TABLE MITTemp;
+	DELETE FROM @MITTemp;
+	IF OBJECT_ID('tempdb..@MITTemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #MITTemp;
+	END
 
-	DROP TABLE TMTemp;
+	DELETE FROM @TMTemp;
+	IF OBJECT_ID('tempdb..@TMTemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #TMTemp;
+	END
 
-	DROP TABLE UATemp;
+	DELETE FROM @UATemp;
+	IF OBJECT_ID('tempdb..@UATemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #UATemp;
+	END
 
-	DROP TABLE TMTITemp;
+	DELETE FROM @TMTITemp;
+	IF OBJECT_ID('tempdb..@TMTITemp') IS NOT NULL
+	BEGIN
+		DROP TABLE #TMTITemp;
+	END
+
 END TRY
 BEGIN CATCH     
     INSERT INTO dbo.DBErrors  
