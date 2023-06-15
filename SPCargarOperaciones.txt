@@ -303,7 +303,7 @@ BEGIN
 					 )
 				SELECT 
 					TH.Nombre
-					,S.FechaVencimiento
+					,CONVERT(DATE, '01/' + S.FechaVencimiento, 103)
 					,S.CCV
 					,S.Codigo
 					,dbo.CodigoToTC(S.TCAsociada)
@@ -418,8 +418,8 @@ BEGIN
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE YEAR(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= YEAR(@fechaActual)
-				AND MONTH(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= MONTH(@fechaActual)
+				WHERE YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)
 
 				INSERT @MovimientoTemp (
 				Nombre 
@@ -446,8 +446,8 @@ BEGIN
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE YEAR(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= YEAR(@fechaActual)
-				AND MONTH(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= MONTH(@fechaActual)
+				WHERE YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)
 
 				INSERT INTO @ResultadosTemp (
 					CodigoNuevo
@@ -468,12 +468,11 @@ BEGIN
 				UPDATE TF
 				SET 
 				Codigo = R.CodigoNuevo
-				,FechaCaducacion =CONVERT(VARCHAR(7), FORMAT(DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 'M/yyyy'), 120)
+				,FechaCaducacion =DATEADD(YEAR, 3, FechaCaducacion)
 				FROM TF
 				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
 				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
 				DELETE FROM @ResultadosTemp
-
 				COMMIT TRANSACTION tNuevaTF
 			
 
