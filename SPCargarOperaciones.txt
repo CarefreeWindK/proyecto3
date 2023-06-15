@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[CargarOperacionesXML]
+CREATE PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -391,92 +391,90 @@ BEGIN
 			END
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
-				--BEGIN TRANSACTION tNuevaTF
+				BEGIN TRANSACTION tNuevaTF
 
-				--INSERT @MovimientoTemp (
-				--Nombre 
-				--,TF 
-				--,FechaMovimiento 
-				--,Monto 
-				--,Descripcion
-				--,Referencia
-				--)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
-				--SELECT
-				--	'Renovacion de TF'
-				--	,TF.Codigo
-				--	,@fecha
-				--	,TCTMXRNMM.Monto
-				--	,'Renovacion de TF'
-				--	, (SELECT CONCAT(
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-				--		CHAR(FLOOR(RAND() * 10) + 48),
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-				--		CHAR(FLOOR(RAND() * 10) + 48),
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-				--		))
-				--FROM CTM S
-				--INNER JOIN TF ON S.Id = TF.IdCT
-				--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
-				--INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				--WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
-				--AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual) 
+				INSERT @MovimientoTemp (
+				Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto 
+				,Descripcion
+				,Referencia
+				)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
+				SELECT
+					'Renovacion de TF'
+					,TF.Codigo
+					,@fecha
+					,TCTMXRNMM.Monto
+					,'Renovacion de TF'
+					, (SELECT CONCAT(
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+						CHAR(FLOOR(RAND() * 10) + 48),
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+						CHAR(FLOOR(RAND() * 10) + 48),
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
+						))
+				FROM CTM S
+				INNER JOIN TF ON S.Id = TF.IdCT
+				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
+				WHERE YEAR(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= YEAR(@fechaActual)
+				AND MONTH(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= MONTH(@fechaActual)
 
-				--INSERT @MovimientoTemp (
-				--Nombre 
-				--,TF 
-				--,FechaMovimiento 
-				--,Monto 
-				--,Descripcion
-				--,Referencia
-				--)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTA
-				--SELECT
-				--	'Renovacion de TF'
-				--	,TF.Codigo
-				--	,@fecha
-				--	,TCTMXRNMM.Monto
-				--	,'Renovacion de TF'
-				--	, (SELECT CONCAT(
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-				--		CHAR(FLOOR(RAND() * 10) + 48),
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-				--		CHAR(FLOOR(RAND() * 10) + 48),
-				--		CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-				--		))
-				--FROM CTA S
-				--INNER JOIN TF ON S.Id = TF.IdCT
-				--INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
-				--INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				--WHERE MONTH(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= MONTH(@fechaActual)
-				--AND YEAR(CONVERT(DATE, '01/' + TF.FechaCaducacion, 101)) <= YEAR(@fechaActual)
+				INSERT @MovimientoTemp (
+				Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto 
+				,Descripcion
+				,Referencia
+				)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTA
+				SELECT
+					'Renovacion de TF'
+					,TF.Codigo
+					,@fecha
+					,TCTMXRNMM.Monto
+					,'Renovacion de TF'
+					, (SELECT CONCAT(
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+						CHAR(FLOOR(RAND() * 10) + 48),
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
+						CHAR(FLOOR(RAND() * 10) + 48),
+						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
+						))
+				FROM CTA S
+				INNER JOIN TF ON S.Id = TF.IdCT
+				INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
+				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
+				WHERE YEAR(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= YEAR(@fechaActual)
+				AND MONTH(CONVERT(DATE, TF.FechaCaducacion + '/01', 103)) <= MONTH(@fechaActual)
 
+				INSERT INTO @ResultadosTemp (
+					CodigoNuevo
+					,CodigoViejo
+				)
+				SELECT NuevaTF.NumeroTarjetaFisica
+				,M.TF
+				FROM TF
+				INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
+				INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
+				WHERE M.Nombre = 'Renovacion de TF';
 
+				UPDATE NuevaTF
+				SET Usado=1
+				FROM NuevaTF
+				INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
-				--INSERT INTO @ResultadosTemp (
-				--	CodigoNuevo
-				--	,CodigoViejo
-				--)
-				--SELECT NuevaTF.NumeroTarjetaFisica
-				--,M.TF
-				--FROM TF
-				--INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
-				--INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
-				--WHERE M.Nombre = 'Renovacion de TF';
+				UPDATE TF
+				SET 
+				Codigo = R.CodigoNuevo
+				,FechaCaducacion =CONVERT(VARCHAR(7), FORMAT(DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 'M/yyyy'), 120)
+				FROM TF
+				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
+				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
+				DELETE FROM @ResultadosTemp
 
-				--UPDATE NuevaTF
-				--SET Usado=1
-				--FROM NuevaTF
-				--INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
-
-				--UPDATE TF
-				--SET 
-				--Codigo = R.CodigoNuevo
-				--,FechaCaducacion =CONVERT(VARCHAR(7), DATEADD(YEAR, 3, DATEFROMPARTS(CAST(RIGHT(TF.FechaCaducacion, 4) AS INT), CAST(LEFT(TF.FechaCaducacion, CHARINDEX('/', TF.FechaCaducacion) - 1) AS INT), 1)), 0)
-				--FROM TF
-				--INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
-				--WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
-				--DELETE FROM @ResultadosTemp
-
-				--COMMIT TRANSACTION tNuevaTF
+				COMMIT TRANSACTION tNuevaTF
 			
 
 		-----Fecha de Corte-----
@@ -501,6 +499,7 @@ BEGIN
 			  ERROR_MESSAGE(),
 			  GETDATE()
 			);
+			RETURN
 	END CATCH
 	--SET NOCOUNT OFF;
 END
