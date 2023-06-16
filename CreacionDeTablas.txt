@@ -73,7 +73,29 @@ Id INT IDENTITY (1,1) NOT NULL PRIMARY KEY
 ,NumeroTarjetaFisica VARCHAR(16)
 ,Usado BIT DEFAULT (0)
 )
-
+CREATE TABLE dbo.SubEC
+(
+  Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
+  ,Saldo MONEY
+  ,PagoMin INT
+  ,Fecha VARCHAR(32)
+  ,IntereseCorrientes INT
+  ,InteresMoratorios INT
+  ,ContadorATM INT
+  ,ContadorVentanilla INT
+  ,SUMPagosAntesFechaPagoMin INT
+  ,SUMPagos INT
+  ,QPagos INT
+  ,SUMCompras INT
+  ,QCompras INT
+  ,SUMRetiros INT
+  ,QRetiros INT
+  ,SUMCreditos INT
+  ,QCreditos INT
+  ,SUMDebitos INT
+  ,QDebitos INT
+  ,IdCTA INT  --FK CTA
+);
 CREATE TABLE dbo.EC
 (
   Id INT IDENTITY (1, 1) NOT NULL PRIMARY KEY
@@ -290,6 +312,12 @@ REFERENCES [dbo].[MotivoInvalidacion] ([id])
 ALTER TABLE [dbo].[EC] WITH CHECK ADD CONSTRAINT
 [FK_EC_CTM] FOREIGN KEY([IdCTM])
 REFERENCES [dbo].[CTM] ([id])
+
+-----------------------------------------------------------------------
+
+ALTER TABLE [dbo].[SubEC] WITH CHECK ADD CONSTRAINT
+[FK_SubEC_CTA] FOREIGN KEY([IdCTA])
+REFERENCES [dbo].[CTA] ([id])
 
 -----------------------------------------------------------------------
 
