@@ -1,4 +1,11 @@
-CREATE PROCEDURE [dbo].[CargarOperacionesXML]
+USE [bd2]
+GO
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 15/6/2023 16:03:31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -17,7 +24,8 @@ BEGIN
 		DECLARE @fecha VARCHAR(16);
 
 		DECLARE @ResultadosTemp TABLE (
-					CodigoNuevo VARCHAR(16)
+					Id INT IDENTITY (1,1) 
+					,CodigoNuevo VARCHAR(16)
 					,CodigoViejo VARCHAR(16)
 					);
 
@@ -99,7 +107,7 @@ BEGIN
 		BEGIN
 	
 		SET @fecha=CAST(@fechaActual AS VARCHAR(16));
-
+		BEGIN TRANSACTION tNuevaTF
 		IF EXISTS (SELECT Fechas FROM @Fechas S WHERE @fechaActual = S.Fechas)
 			BEGIN
 				DELETE FROM @THTemp;
@@ -391,8 +399,7 @@ BEGIN
 			END
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
-				BEGIN TRANSACTION tNuevaTF
-
+				
 				INSERT @MovimientoTemp (
 				Nombre 
 				,TF 
@@ -418,8 +425,8 @@ BEGIN
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)
+				WHERE (YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion) )OR TF.FechaCaducacion='2023-08-01'
 
 				INSERT @MovimientoTemp (
 				Nombre 
@@ -446,8 +453,8 @@ BEGIN
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)
+				WHERE (YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR TF.FechaCaducacion='2023-08-01'
 
 				INSERT INTO @ResultadosTemp (
 					CodigoNuevo
@@ -458,7 +465,8 @@ BEGIN
 				FROM TF
 				INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
 				INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
-				WHERE M.Nombre = 'Renovacion de TF';
+				--INNER JOIN @ResultadosTemp AS Temp ON NuevaTF.Id = Temp.Id
+				WHERE M.Nombre = 'Renovacion de TF' 
 
 				UPDATE NuevaTF
 				SET Usado=1
@@ -473,18 +481,38 @@ BEGIN
 				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
 				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
 				DELETE FROM @ResultadosTemp
+				
+				SELECT * FROM CT
+				SELECT * FROM CTM
+				SELECT * FROM CTA
+				SELECT * FROM TF
+				SELECT * FROM NuevaTF
+				SELECT * FROM @ResultadosTemp
+				SELECT * FROM @MovimientoTemp
+
+
+				IF @fechaActual=@fechaInicio
+				BEGIN
+				SET @fechaActual='G'
+				END
+
 				COMMIT TRANSACTION tNuevaTF
 			
 
 		-----Fecha de Corte-----
-			
 		SET @fechaActual = DATEADD(DAY, 1, @fechaActual);
+
 		END
 	END TRY 
 	BEGIN CATCH
 		IF @@TRANCOUNT>0  -- Error sucedio dentro de la transacción
 			BEGIN
 				ROLLBACK TRANSACTION tNuevaTF; -- Se deshacen los cambios realizados
+				DBCC CHECKIDENT(CT,RESEED,0)
+				DBCC CHECKIDENT(CTA,RESEED,0)
+				DBCC CHECKIDENT(CTM,RESEED,0)
+				DBCC CHECKIDENT(TF,RESEED,0)
+				DBCC CHECKIDENT(TH,RESEED,0)
 			END;
 		INSERT INTO dbo.DBErrors
     
