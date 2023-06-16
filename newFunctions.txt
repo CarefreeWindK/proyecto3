@@ -172,3 +172,15 @@ BEGIN
     
     RETURN @outNombre
 END;
+
+CREATE FUNCTION dbo.CodigoTFToIdCT (@inCodigoTF VARCHAR(32))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @outId INT;
+    SELECT @outId=T.Id
+    FROM CT T
+    INNER JOIN TF ON T.Id = TF.IdCT
+    WHERE TF.Codigo = @inCodigoTF
+    RETURN @outId;
+END;
