@@ -1,11 +1,11 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 15/6/2023 16:03:31 ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 16/6/2023 10:26:51 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER PROCEDURE [dbo].[CargarOperacionesXML]
+CREATE PROCEDURE [dbo].[CargarOperacionesXML]
     @inPathXML NVARCHAR(512) -- Ruta del archivo XML
 AS 
 BEGIN
@@ -319,49 +319,48 @@ BEGIN
 				FROM @NTFTemp S
 				INNER JOIN TH ON dbo.CodigoToTC(S.TCAsociada) = TH.IdCT 
 				------------------------------------------------------------------------------------------------
-				--INSERT INTO EC(
-			
-				--	 Saldo
-				--	 ,PagoMin
-				--	 ,Fecha
-				--	 ,IntereseCorrientes
-				--	 ,InteresMoratorios
-				--	 ,ContadorATM
-				--	 ,ContadorVentanilla
-				--	 ,SUMPagosAntesFechaPagoMin
-				--	 ,SUMPagos
-				--	 ,QPagos
-				--   ,SUMCompras
-				--   ,QCompras
-				--   ,SUMRetiros
-				--   ,QRetiros
-				--	 ,SUMCreditos
-				--	 ,QCreditos
-				--   ,SUMDebitos
-				--   ,QDebitos			
-				--	 ,IdCTM
-				--	 )
-				--SELECT 
-				--	,0
-				--	,0
-				--	,@fecha
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,0
-				--	,dbo.CodigoTFToIdCT(S.TF)
-				--FROM @MovimientoTemp S	
+				INSERT INTO EC(
+					 Saldo
+					 ,PagoMin
+					 ,Fecha
+					 ,IntereseCorrientes
+					 ,InteresMoratorios
+					 ,ContadorATM
+					 ,ContadorVentanilla
+					 ,SUMPagosAntesFechaPagoMin
+					 ,SUMPagos
+					 ,QPagos
+					 ,SUMCompras
+					 ,QCompras
+					 ,SUMRetiros
+					 ,QRetiros
+					 ,SUMCreditos
+					 ,QCreditos
+				     ,SUMDebitos
+				     ,QDebitos			
+					 ,IdCTM
+					 )
+				SELECT 
+					0
+					,0
+					,@fecha
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,0
+					,(SELECT Id FROM CT WHERE CT.Codigo=S.Codigo)
+				FROM @NTCMTemp S
 				------------------------------------------------------------------------------------------------
 				--INSERT @NuevasTF (
 				--	TFVieja
@@ -399,74 +398,85 @@ BEGIN
 			END
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
-				
 				INSERT @MovimientoTemp (
-				Nombre 
-				,TF 
-				,FechaMovimiento 
-				,Monto 
+				Nombre
+				,TF
+				,FechaMovimiento
+				,Monto
 				,Descripcion
 				,Referencia
-				)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTM
+				)
 				SELECT
-					'Renovacion de TF'
-					,TF.Codigo
-					,@fecha
-					,TCTMXRNMM.Monto
-					,'Renovacion de TF'
-					, (SELECT CONCAT(
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-						CHAR(FLOOR(RAND() * 10) + 48),
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-						CHAR(FLOOR(RAND() * 10) + 48),
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-						))
+				'Renovacion de TF'
+				,TF.Codigo
+				,@fecha
+				,TCTMXRNMM.Monto
+				,'Renovacion de TF'
+				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTM S
 				INNER JOIN TF ON S.Id = TF.IdCT
-				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE (YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion) )OR TF.FechaCaducacion='2023-08-01'
+				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
+				TF.FechaCaducacion = '2023-08-01') AND RN.Nombre = 'Cargo renovacion de TF de CTM';
+
 
 				INSERT @MovimientoTemp (
-				Nombre 
-				,TF 
-				,FechaMovimiento 
-				,Monto 
+				Nombre
+				,TF
+				,FechaMovimiento
+				,Monto
 				,Descripcion
 				,Referencia
-				)   		-- aqui el monto el movimiento se toma de la RN de renovacion de CTA
+				)
 				SELECT
-					'Renovacion de TF'
-					,TF.Codigo
-					,@fecha
-					,TCTMXRNMM.Monto
-					,'Renovacion de TF'
-					, (SELECT CONCAT(
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-						CHAR(FLOOR(RAND() * 10) + 48),
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32),
-						CHAR(FLOOR(RAND() * 10) + 48),
-						CHAR(FLOOR(RAND() * 26) + 65 + FLOOR(RAND() * 2) * 32)
-						))
+				'Renovacion de TF'
+				,TF.Codigo
+				,@fecha
+				,TCTMXRNMM.Monto
+				,'Renovacion de TF'
+				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTA S
 				INNER JOIN TF ON S.Id = TF.IdCT
-				INNER JOIN RN ON S.IdTCM = RN.IdTCTM -- sacar la tasa de interes de RN
+				INNER JOIN RN ON S.IdTCM = RN.IdTCTM
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE (YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR TF.FechaCaducacion='2023-08-01'
+				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
+				TF.FechaCaducacion = '2023-08-01') AND RN.Nombre = 'Cargo renovacion de TF de CTA';
 
-				INSERT INTO @ResultadosTemp (
-					CodigoNuevo
-					,CodigoViejo
-				)
-				SELECT NuevaTF.NumeroTarjetaFisica
-				,M.TF
+
+
+				DECLARE @NumeroTarjetaFisica VARCHAR(50);
+				DECLARE @TF VARCHAR(50);
+
+				DECLARE MyCursor CURSOR FOR
+				SELECT NuevaTF.NumeroTarjetaFisica, M.TF
 				FROM TF
 				INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
-				INNER JOIN NuevaTF ON TF.EsValida= NuevaTF.Usado
-				--INNER JOIN @ResultadosTemp AS Temp ON NuevaTF.Id = Temp.Id
-				WHERE M.Nombre = 'Renovacion de TF' 
+				INNER JOIN NuevaTF ON TF.EsValida = NuevaTF.Usado
+				WHERE M.Nombre = 'Renovacion de TF'
+					AND NuevaTF.Id NOT IN (SELECT Id FROM @ResultadosTemp)
+					AND M.TF NOT IN (SELECT CodigoViejo FROM @ResultadosTemp WHERE CodigoViejo IS NOT NULL);
+
+				OPEN MyCursor;
+				FETCH NEXT FROM MyCursor INTO @NumeroTarjetaFisica, @TF;
+
+				WHILE @@FETCH_STATUS = 0
+				BEGIN
+					INSERT INTO @ResultadosTemp (CodigoNuevo, CodigoViejo)
+					VALUES (@NumeroTarjetaFisica, @TF);
+
+					FETCH NEXT FROM MyCursor INTO @NumeroTarjetaFisica, @TF;
+				END;
+
+				CLOSE MyCursor;
+				DEALLOCATE MyCursor;
+
+
+
+
+
 
 				UPDATE NuevaTF
 				SET Usado=1
@@ -480,21 +490,20 @@ BEGIN
 				FROM TF
 				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
 				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
-				DELETE FROM @ResultadosTemp
 				
-				SELECT * FROM CT
-				SELECT * FROM CTM
-				SELECT * FROM CTA
-				SELECT * FROM TF
-				SELECT * FROM NuevaTF
-				SELECT * FROM @ResultadosTemp
-				SELECT * FROM @MovimientoTemp
 
 
-				IF @fechaActual=@fechaInicio
-				BEGIN
-				SET @fechaActual='G'
-				END
+				--SELECT * FROM EC
+				--SELECT * FROM NuevaTF
+				--SELECT * FROM @ResultadosTemp
+				--SELECT * FROM TF
+				--SELECT * FROM @MovimientoTemp 
+				--DELETE FROM @ResultadosTemp
+
+				--IF @fechaActual=@fechaInicio
+				--BEGIN
+				--SET @fechaActual='G'
+				--END
 
 				COMMIT TRANSACTION tNuevaTF
 			
@@ -513,6 +522,7 @@ BEGIN
 				DBCC CHECKIDENT(CTM,RESEED,0)
 				DBCC CHECKIDENT(TF,RESEED,0)
 				DBCC CHECKIDENT(TH,RESEED,0)
+				DBCC CHECKIDENT(EC,RESEED,0)
 			END;
 		INSERT INTO dbo.DBErrors
     
