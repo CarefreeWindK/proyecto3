@@ -1,6 +1,6 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 16/6/2023 14:46:22 ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 17/6/2023 16:01:23 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -60,7 +60,8 @@ BEGIN
 	   )
 
 	   DECLARE @MovimientoTemp TABLE (
-			Nombre VARCHAR(128)
+			 Id INT IDENTITY (1,1) 
+			,Nombre VARCHAR(128)
 			,TF VARCHAR(32)
 			,FechaMovimiento VARCHAR(32)
 			,Monto VARCHAR(32)
@@ -115,6 +116,7 @@ BEGIN
 				DELETE FROM @NTCMTemp;
 				DELETE FROM @NTCATemp;
 				DELETE FROM @NTFTemp;
+				DELETE FROM @MovimientoTemp;
 				-- Se limpian las tablas temporales para que no tengan informacion repetida
 				--------------------------------------------------------------------------------------------------
 				INSERT INTO @THTemp (
@@ -407,39 +409,6 @@ BEGIN
 					,(SELECT Id FROM CT WHERE CT.Codigo=S.CodigoTCA)
 				FROM @NTCATemp S
 				------------------------------------------------------------------------------------------------
-				--INSERT @NuevasTF (
-				--	TFVieja
-				--	,TFNueva
-				--)
-				--SELECT
-				--	TF
-				--	,TFNueva
-				--FROM @MovimientoTemp M
-				--WHERE M.Nombre= 'Recuperacion por Perdida' OR M.Nombre= 'Recuperacion por Robo'	
-				--------------------------------------------------------------------------------------------------
-
-
-				--INSERT @MovInteresesCorr (
-				--	MontoDebitoInteresesCorrientes
-				--	,SaldoInteresesCorrientes
-				--)
-				--SELECT
-				--	S.Saldo*TCTMXRNTasa.Tasa/100/30
-				--	,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
-				--FROM CTM S
-				--INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
-				--INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
-				--WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
-
-				----------------------------------------------------------------------------------------------------
-				--INSERT @MovInteresesMor (... monto, )
-				--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
-				--FROM CTM 
-				--inner join EC.Id=CTM.LastId
-				--WHERE EC.SumaPagos<EC.PagoMinimo
-				--.....  -- sacar la tasa de interes de RN
-				--WHERE CTM.Saldo>0
-				----------------------------------------------------------------------------------------------------
 			END
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por perdida
@@ -450,9 +419,16 @@ BEGIN
 				FROM TF
 				INNER JOIN @MovimientoTemp R ON TF.Codigo = R.TF
 				INNER JOIN MotivoInvalidacion ON R.Nombre LIKE '%' + MotivoInvalidacion.Nombre + '%'
+				WHERE R.Nombre='Recuperacion por Perdida' OR R.Nombre='Recuperacion por Robo'
+
+				UPDATE TF
+				SET 
+				IdMI = (SELECT MotivoInvalidacion.Id FROM MotivoInvalidacion WHERE MotivoInvalidacion.Nombre='Vencimiento')
+				,EsValida=0
+				FROM TF
 				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
 				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
-				TF.FechaCaducacion = '2023-08-01') OR R.Nombre='Recuperacion por Perdida' OR R.Nombre='Recuperacion por Robo'
+				TF.FechaCaducacion = '2023-08-01') 
 
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
@@ -465,19 +441,17 @@ BEGIN
 				,Referencia
 				)
 				SELECT
-				'Renovacion de TF'
+				(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,TF.Codigo
 				,@fecha
 				,TCTMXRNMM.Monto
-				,'Renovacion de TF'
+				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTM S
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
-				TF.FechaCaducacion = '2023-08-01') AND RN.Nombre = 'Cargo renovacion de TF de CTM';
+				WHERE (TF.IdMI=1 AND RN.Nombre = 'Reposicion de tarjeta de CTM')OR(TF.IdMI=2 AND RN.Nombre = 'Reposicion de tarjeta de CTM')OR(TF.IdMI=3 AND RN.Nombre = 'Cargo renovacion de TF de CTM');
 
 
 				INSERT @MovimientoTemp (
@@ -489,31 +463,31 @@ BEGIN
 				,Referencia
 				)
 				SELECT
-				'Renovacion de TF'
+				(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,TF.Codigo
 				,@fecha
 				,TCTMXRNMM.Monto
-				,'Renovacion de TF'
+				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTA S
 				INNER JOIN TF ON S.Id = TF.IdCT
-				INNER JOIN RN ON S.IdTCM = RN.IdTCTM
+				INNER JOIN RN ON (SELECT R.IdTCTM FROM CTM R WHERE R.Id=S.IdTCM) = RN.IdTCTM
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
-				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
-				TF.FechaCaducacion = '2023-08-01') AND RN.Nombre = 'Cargo renovacion de TF de CTA';
-
+				WHERE (TF.IdMI=1 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=2 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=3 AND RN.Nombre = 'Cargo renovacion de TF de CTA');
+				
 
 
 				DECLARE @NumeroTarjetaFisica VARCHAR(50);
 				DECLARE @TF VARCHAR(50);
 
 				DECLARE MyCursor CURSOR FOR
-				SELECT NuevaTF.NumeroTarjetaFisica, M.TF
+				SELECT 
+				NuevaTF.NumeroTarjetaFisica
+				,M.TF
 				FROM TF
 				INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
 				INNER JOIN NuevaTF ON 0 = NuevaTF.Usado
-				WHERE M.Nombre = 'Renovacion de TF'
+				WHERE (M.Nombre = 'Vencimiento' OR M.Nombre = 'Robo' OR M.Nombre = 'Perdida')
 					AND NuevaTF.Id NOT IN (SELECT Id FROM @ResultadosTemp)
 					AND M.TF NOT IN (SELECT CodigoViejo FROM @ResultadosTemp WHERE CodigoViejo IS NOT NULL);
 
@@ -536,18 +510,397 @@ BEGIN
 				FROM NuevaTF
 				INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
+
 				UPDATE TF
 				SET 
 				Codigo = R.CodigoNuevo
-				,FechaCaducacion =DATEADD(YEAR, 3, FechaCaducacion)
+				,IdMI = NULL
+				,EsValida=1
 				FROM TF
 				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
-				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)
+				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF) AND (SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)!='Vencimiento'
+
+				UPDATE TF
+				SET 
+				Codigo = R.CodigoNuevo
+				,FechaCaducacion =DATEADD(YEAR, 1, FechaCaducacion)
+				,IdMI = NULL
+				,EsValida=1
+				FROM TF
+				INNER JOIN @ResultadosTemp R ON TF.Codigo = R.CodigoViejo
+				WHERE R.CodigoNuevo NOT IN (SELECT Codigo FROM TF)AND (SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)='Vencimiento'
+				
 			--------------------------------------------------------------------------------------------------
+				DECLARE @CodigoTF VARCHAR(16);
+				DECLARE @Monto VARCHAR(16);
+				DECLARE @Acumula_Operacion_ATM VARCHAR(8);
+				DECLARE @Acumula_Operacion_Ventana VARCHAR(8);
+				DECLARE @NombreMov VARCHAR(16);
+
+				DECLARE @MovimientoID INT; -- Variable para almacenar el Id del movimiento
+
+				--SELECT
+				--	*
+				--	FROM @MovimientoTemp T
+				--	INNER JOIN TF ON T.TF = TF.Codigo
+				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
+				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
+
+				SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN EC ON TF.IdCT=EC.IdCTM
+					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
 
 
-				SELECT * FROM CT
-				SELECT * FROM TF
+				WHILE @MovimientoID IS NOT NULL
+				BEGIN
+					-- Obtener los valores correspondientes al movimiento actual
+	
+					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+
+
+					-- Realizar la actualización
+					UPDATE EC
+					SET 
+					QCompras= QCompras+1
+					,SUMCompras=SUMCompras + CONVERT(MONEY, @Monto)
+					WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@NombreMov = 'Compra');
+
+					UPDATE EC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,ContadorATM = ContadorATM +1
+					,QRetiros= QRetiros+1
+					,SUMRetiros=SUMRetiros + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@Acumula_Operacion_ATM = 'SI');
+	
+					UPDATE EC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,ContadorVentanilla = ContadorVentanilla +1
+					,QRetiros= QRetiros+1
+					,SUMRetiros=SUMRetiros + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND (@Acumula_Operacion_Ventana = 'SI') ;
+	
+					UPDATE EC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND  ((@Acumula_Operacion_Ventana = 'NO') AND  (@Acumula_Operacion_ATM = 'NO'));
+
+
+					-- Obtener el siguiente movimiento
+
+					SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN EC ON TF.IdCT=EC.IdCTM
+					WHERE T.Id > @MovimientoID
+						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
+				END;
+
+				--SELECT *
+				--	FROM EC
+				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
+				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
+				--	INNER JOIN TM ON T.Nombre = TM.Nombre
+				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
+
+			----------------------------------------------------------------------------------------------------
+				--SELECT
+				--	*
+				--	FROM @MovimientoTemp T
+				--	INNER JOIN TF ON T.TF = TF.Codigo
+				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
+				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
+
+				SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN EC ON TF.IdCT=EC.IdCTM
+					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
+
+	
+				WHILE @MovimientoID IS NOT NULL
+				BEGIN
+					-- Obtener los valores correspondientes al movimiento actual
+	
+					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+
+
+					-- Realizar la actualización
+					UPDATE EC
+					SET 
+					QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@NombreMov = 'Pago en Linea');
+
+					UPDATE EC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,ContadorATM = ContadorATM +1
+					,QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@Acumula_Operacion_ATM = 'SI');
+	
+					UPDATE EC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,ContadorVentanilla = ContadorVentanilla +1
+					,QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND (@Acumula_Operacion_Ventana = 'SI') ;
+	
+					UPDATE EC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND  ((@Acumula_Operacion_Ventana = 'NO') AND  (@Acumula_Operacion_ATM = 'NO'));
+
+
+					-- Obtener el siguiente movimiento
+
+					SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN EC ON TF.IdCT=EC.IdCTM
+					WHERE T.Id > @MovimientoID
+						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
+				END;
+
+				--SELECT *
+				--	FROM EC
+				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
+				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
+				--	INNER JOIN TM ON T.Nombre = TM.Nombre
+				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+				--SELECT
+				--	*
+				--	FROM @MovimientoTemp T
+				--	INNER JOIN TF ON T.TF = TF.Codigo
+				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
+				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
+
+				SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
+					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
+
+
+
+	
+				WHILE @MovimientoID IS NOT NULL
+				BEGIN
+					-- Obtener los valores correspondientes al movimiento actual
+	
+					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+
+
+					-- Realizar la actualización
+					UPDATE SubEC
+					SET 
+					QCompras= QCompras+1
+					,SUMCompras=SUMCompras + CONVERT(MONEY, @Monto)
+					WHERE (IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@NombreMov = 'Compra');
+
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,ContadorATM = ContadorATM +1
+					,QRetiros= QRetiros+1
+					,SUMRetiros=SUMRetiros + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@Acumula_Operacion_ATM = 'SI');
+	
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,ContadorVentanilla = ContadorVentanilla +1
+					,QRetiros= QRetiros+1
+					,SUMRetiros=SUMRetiros + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND (@Acumula_Operacion_Ventana = 'SI') ;
+	
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					,QDebitos=QDebitos+1
+					,SUMDebitos=SUMDebitos + CONVERT(MONEY, @Monto)
+					WHERE IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND  ((@Acumula_Operacion_Ventana = 'NO') AND  (@Acumula_Operacion_ATM = 'NO'));
+
+
+					-- Obtener el siguiente movimiento
+
+					SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
+					WHERE T.Id > @MovimientoID
+						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
+				END;
+
+				--SELECT *
+				--	FROM EC
+				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
+				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
+				--	INNER JOIN TM ON T.Nombre = TM.Nombre
+				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
+
+			----------------------------------------------------------------------------------------------------
+				--SELECT
+				--	*
+				--	FROM @MovimientoTemp T
+				--	INNER JOIN TF ON T.TF = TF.Codigo
+				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
+				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
+
+				SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
+					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
+
+
+
+	
+				WHILE @MovimientoID IS NOT NULL
+				BEGIN
+					-- Obtener los valores correspondientes al movimiento actual
+	
+					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+
+
+					-- Realizar la actualización
+					UPDATE SubEC
+					SET 
+					QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@NombreMov = 'Pago en Linea');
+
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,ContadorATM = ContadorATM +1
+					,QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE (IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (@Acumula_Operacion_ATM = 'SI');
+	
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,ContadorVentanilla = ContadorVentanilla +1
+					,QPagos= QPagos+1
+					,SUMPagos=SUMPagos + CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND (@Acumula_Operacion_Ventana = 'SI') ;
+	
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo - CONVERT(MONEY, @Monto)
+					,QCreditos=QCreditos+1
+					,SUMCreditos=SUMCreditos + CONVERT(MONEY, @Monto)
+					WHERE IdCTA = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF) AND  ((@Acumula_Operacion_Ventana = 'NO') AND  (@Acumula_Operacion_ATM = 'NO'));
+
+
+					-- Obtener el siguiente movimiento
+
+					SET @MovimientoID = (
+					SELECT
+					MIN(T.Id)
+					FROM @MovimientoTemp T
+					INNER JOIN TF ON T.TF = TF.Codigo
+					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
+					WHERE T.Id > @MovimientoID
+						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
+				END;
+
+				--SELECT *
+				--	FROM EC
+				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
+				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
+				--	INNER JOIN TM ON T.Nombre = TM.Nombre
+				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
+
+			----------------------------------------------------------------------------------------------------
+				INSERT @MovInteresesCorr (
+					MontoDebitoInteresesCorrientes
+					,SaldoInteresesCorrientes
+				)
+				SELECT
+					S.Saldo*TCTMXRNTasa.Tasa/100/30
+					,SaldoInteresesCorrientes + S.Saldo*TCTMXRNTasa.Tasa/100/30
+				FROM CTM S
+				INNER JOIN RN ON S.IdTCTM = RN.IdTCTM -- sacar la tasa de interes de RN
+				INNER JOIN TCTMXRNTasa ON RN.Id = TCTMXRNTasa.Id
+				WHERE S.Saldo>0 AND RN.Nombre='Tasa de interes corriente'
+
+			----------------------------------------------------------------------------------------------------
+				--INSERT @MovInteresesMor (... monto, )
+				--SELECT ..... (CE.EC.PagoMinimo-EC.SumaPagos)*Rn.TasaInteresMor/1000/30, ....
+				--FROM CTM 
+				--inner join EC.Id=CTM.LastId
+				--WHERE EC.SumaPagos<EC.PagoMinimo
+				--.....  -- sacar la tasa de interes de RN
+				--WHERE CTM.Saldo>0
+			--------------------------------------------------------------------------------------------------
+				SELECT * FROM EC 
+				SELECT * FROM SubEC 
+				--SELECT * FROM CTA
+				--SELECT * FROM CTM
+				--SELECT * FROM @MovimientoTemp
+				--SELECT * FROM TF
 				--SELECT * FROM NuevaTF
 				--SELECT * FROM @ResultadosTemp
 				--SELECT * FROM TF
@@ -576,6 +929,7 @@ BEGIN
 				DBCC CHECKIDENT(TF,RESEED,0)
 				DBCC CHECKIDENT(TH,RESEED,0)
 				DBCC CHECKIDENT(EC,RESEED,0)
+				DBCC CHECKIDENT(SubEC,RESEED,0)
 				DBCC CHECKIDENT(Usuario,RESEED,@UsersAdmins)
 			END;
 		INSERT INTO dbo.DBErrors
