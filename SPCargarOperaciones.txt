@@ -1033,12 +1033,13 @@ BEGIN
 						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
 				END;
 
-				--SELECT *
-				--	FROM EC
-				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
-				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
-				--	INNER JOIN TM ON T.Nombre = TM.Nombre
-				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
+			----------------------------------------------------------------------------------------------------
+				UPDATE CTM
+				SET
+				Saldo=EC.Saldo
+				,LastECId=EC.Id
+				FROM CTM
+				INNER JOIN EC ON CTM.Id = EC.IdCTM
 
 			----------------------------------------------------------------------------------------------------
 				INSERT @MovInteresesCorr (
@@ -1062,6 +1063,7 @@ BEGIN
 				--.....  -- sacar la tasa de interes de RN
 				--WHERE CTM.Saldo>0
 			--------------------------------------------------------------------------------------------------
+				SELECT * FROM CTM
 				SELECT * FROM MovimientoSospechoso 
 				SELECT * FROM EC 
 				SELECT * FROM SubEC 
