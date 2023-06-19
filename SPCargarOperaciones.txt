@@ -1,6 +1,6 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 19/6/2023 10:01:11 ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 19/6/2023 16:20:18 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -182,6 +182,10 @@ BEGIN
 				FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
 				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
 				--------------------------------------------------------------------------------------------------
+
+
+
+
 				INSERT INTO #MovimientoTemp  (
 					Nombre 
 					,TF 
@@ -431,7 +435,8 @@ BEGIN
 				,EsValida=0
 				FROM TF
 				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) ) 
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
+				TF.FechaCaducacion='2023-08-01') 
 
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
@@ -444,11 +449,11 @@ BEGIN
 				,Referencia
 				)
 				SELECT
-				(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
+				(SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,TF.Codigo
 				,@fecha
 				,TCTMXRNMM.Monto
-				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
+				,(SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTM S
 				INNER JOIN TF ON S.Id = TF.IdCT
@@ -466,36 +471,85 @@ BEGIN
 				,Referencia
 				)
 				SELECT
-				(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
+				(SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,TF.Codigo
 				,@fecha
 				,TCTMXRNMM.Monto
-				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
+				,(SELECT Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
 				,SUBSTRING(CONVERT(VARCHAR(40), NEWID()), 1, 5) --Genera un codigo de referencia aleatorio
 				FROM CTA S
 				INNER JOIN TF ON S.Id = TF.IdCT
 				INNER JOIN RN ON (SELECT R.IdTCTM FROM CTM R WHERE R.Id=S.IdTCM) = RN.IdTCTM
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
 				WHERE (TF.IdMI=1 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=2 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=3 AND RN.Nombre = 'Cargo renovacion de TF de CTA');
-				
-				INSERT MovimientoSospechoso(
-				Monto
-				,Fecha
-				,Descripcion
-				,IdTF
-				,IdCTM
+			--------------------------------------------------------------------------------------------------
+				DECLARE @MovimientosAUX TABLE(
+				 Id INT IDENTITY (1,1) 
+				,Nombre VARCHAR(128)
+				,TF VARCHAR(32)
+				,FechaMovimiento VARCHAR(32)
+				,Monto VARCHAR(32)
+				,Descripcion VARCHAR(32)
+				,Referencia VARCHAR(32)
+			 )
+			 INSERT INTO @MovimientosAUX(
+			 	 Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto
+				,Descripcion 
+				,Referencia 
 				)
-				SELECT
-				M.Monto
-				,@fecha
-				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
-				,TF.Id
-				,TF.IdCT
+				SELECT 
+				M.Nombre
+				,M.TF
+				,M.FechaMovimiento
+				,M.Monto
+				,M.Descripcion
+				,M.Referencia
 				FROM #MovimientoTemp M
-				INNER JOIN TF ON M.TF = TF.Codigo
+				WHERE M.Nombre ='Vencimiento'
 
+				INSERT INTO @MovimientosAUX(
+				Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto
+				,Descripcion 
+				,Referencia 
+				)
+				SELECT 
+				M.Nombre
+				,M.TF
+				,M.FechaMovimiento
+				,M.Monto
+				,M.Descripcion
+				,M.Referencia
+				FROM #MovimientoTemp M
+				WHERE M.Nombre !='Vencimiento'
 
+				DELETE FROM #MovimientoTemp
+				-- Reiniciar el IDENTITY al valor inicial
+				DBCC CHECKIDENT('#MovimientoTemp', RESEED, 0);
 
+				INSERT INTO #MovimientoTemp(
+				Nombre 
+				,TF 
+				,FechaMovimiento 
+				,Monto
+				,Descripcion 
+				,Referencia 
+				)
+				SELECT 
+				M.Nombre
+				,M.TF
+				,M.FechaMovimiento
+				,M.Monto
+				,M.Descripcion
+				,M.Referencia
+				FROM @MovimientosAUX M
+
+			--------------------------------------------------------------------------------------------------
 				DECLARE @NumeroTarjetaFisica VARCHAR(50);
 				DECLARE @TF VARCHAR(50);
 
@@ -533,7 +587,61 @@ BEGIN
 				INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
 
+			--------------------------------------------------------------------------------------------------
+					UPDATE #MovimientoTemp
+					SET TF = R.CodigoNuevo
+					FROM #MovimientoTemp M
+					INNER JOIN @ResultadosTemp R ON M.TF = R.CodigoViejo
+					WHERE M.Nombre='Robo' OR M.Nombre='Perdida' 
+			--------------------------------------------------------------------------------------------------
+				DECLARE @IdMovimiento2 INT = 1;
+				DECLARE @NombreMovimiento2 VARCHAR(128) = '';
 
+				--SELECT Id FROM #MovimientoTemp M WHERE (M.Nombre='Recuperacion por Perdida' OR M.Nombre='Recuperacion por Robo' OR M.Nombre='Vencimiento')AND TF =(SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)
+
+
+				WHILE @IdMovimiento2<= (SELECT MAX(Id) FROM #MovimientoTemp)
+				BEGIN
+				SET @NombreMovimiento2= (SELECT Nombre FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento2)
+				IF EXISTS (
+					SELECT *
+					FROM #MovimientoTemp AS MT
+					WHERE MT.Id = @IdMovimiento2
+						AND (MT.Nombre = 'Recuperacion por Perdida' OR MT.Nombre = 'Recuperacion por Robo' OR MT.Nombre = 'Vencimiento')
+						AND NOT EXISTS (
+							SELECT *
+							FROM movimientoSospechoso AS MS
+							WHERE  MS.Descripcion = MT.Nombre AND MS.Monto=MT.Monto
+						)
+				)
+				BEGIN
+					INSERT INTO MovimientoSospechoso(
+					Monto
+					,Fecha
+					,Descripcion
+					,IdTF
+					,IdCT
+					)
+					SELECT
+					M.Monto
+					,M.FechaMovimiento
+					,M.Nombre
+					,(SELECT Id FROM TF WHERE TF.Codigo=M.TF)
+					,(SELECT IdCT FROM TF WHERE TF.Codigo=M.TF)
+					FROM #MovimientoTemp M
+					INNER JOIN @ResultadosTemp R ON M.TF = R.CodigoViejo
+					WHERE M.Id>@IdMovimiento2 AND M.TF= (SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento2)
+					
+				END
+				SET @IdMovimiento2=@IdMovimiento2+1
+				END
+			--------------------------------------------------------------------------------------------------
+					UPDATE #MovimientoTemp
+					SET TF = R.CodigoNuevo
+					FROM #MovimientoTemp M
+					INNER JOIN @ResultadosTemp R ON M.TF = R.CodigoViejo
+					WHERE M.Nombre='Vencimiento' 
+			--------------------------------------------------------------------------------------------------
 				DECLARE @IdMovimiento INT = 1;
 				DECLARE @NombreMovimiento VARCHAR(128) = '';
 
@@ -549,13 +657,16 @@ BEGIN
 					SET TF = R.CodigoNuevo
 					FROM #MovimientoTemp M
 					INNER JOIN @ResultadosTemp R ON M.TF = R.CodigoViejo
-					WHERE M.Id<@IdMovimiento AND M.TF= (SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)
-					
+					WHERE M.Id<@IdMovimiento AND M.TF= (SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)	AND NOT EXISTS (
+							SELECT *
+							FROM movimientoSospechoso AS MS
+							WHERE  MS.Descripcion = M.Nombre AND MS.Monto=M.Monto
+						)
 				END
 				SET @IdMovimiento=@IdMovimiento+1
 				END
+			--------------------------------------------------------------------------------------------------
 
-				
 				UPDATE TF
 				SET 
 				Codigo = R.CodigoNuevo
@@ -597,7 +708,8 @@ BEGIN
 					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN EC ON TF.IdCT=EC.IdCTM
-					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
+					WHERE ((SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito') OR (T.Nombre='Vencimiento'OR T.Nombre='Robo' OR T.Nombre='Perdida')
+					);
 
 
 				WHILE @MovimientoID IS NOT NULL
@@ -606,12 +718,17 @@ BEGIN
 	
 					SET @CodigoTF = (SELECT TF.Codigo FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
 					SET @Monto = (SELECT T.Monto FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre  WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre  WHERE T.Id = @MovimientoID);
 					SET @NombreMov = (SELECT TM.Nombre FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
 
 
 					-- Realizar la actualización
+					UPDATE EC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					WHERE (SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Vencimiento'OR (SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Robo' OR(SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Perdida';
+
 					UPDATE EC
 					SET 
 					QCompras= QCompras+1
@@ -764,8 +881,8 @@ BEGIN
 					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
-					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
-
+					WHERE ((SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito') OR (T.Nombre='Vencimiento'OR T.Nombre='Robo' OR T.Nombre='Perdida')
+					);
 
 
 	
@@ -781,6 +898,11 @@ BEGIN
 
 
 					-- Realizar la actualización
+					UPDATE SubEC
+					SET 
+					Saldo = Saldo + CONVERT(MONEY, @Monto)
+					WHERE (SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Vencimiento'OR (SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Robo' OR(SELECT T.nombre FROM #MovimientoTemp T WHERE T.Id = @MovimientoID)='Perdida';
+					
 					UPDATE SubEC
 					SET 
 					QCompras= QCompras+1
@@ -940,11 +1062,12 @@ BEGIN
 				--.....  -- sacar la tasa de interes de RN
 				--WHERE CTM.Saldo>0
 			--------------------------------------------------------------------------------------------------
+				SELECT * FROM MovimientoSospechoso 
 				SELECT * FROM EC 
 				SELECT * FROM SubEC 
 				--SELECT * FROM CTA
 				--SELECT * FROM CTM
-				--SELECT * FROM @MovimientoTemp
+				SELECT * FROM #MovimientoTemp
 				--SELECT * FROM TF
 				--SELECT * FROM NuevaTF
 				--SELECT * FROM @ResultadosTemp
@@ -975,6 +1098,7 @@ BEGIN
 				DBCC CHECKIDENT(TH,RESEED,0)
 				DBCC CHECKIDENT(EC,RESEED,0)
 				DBCC CHECKIDENT(SubEC,RESEED,0)
+				DBCC CHECKIDENT(MovimientoSospechoso,RESEED,0)
 				DBCC CHECKIDENT(Usuario,RESEED,@UsersAdmins)
 			END;
 		INSERT INTO dbo.DBErrors
