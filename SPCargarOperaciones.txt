@@ -1,6 +1,6 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 17/6/2023 16:01:23 ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 19/6/2023 10:01:11 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -59,7 +59,7 @@ BEGIN
 			,CCV  VARCHAR(32)
 	   )
 
-	   DECLARE @MovimientoTemp TABLE (
+	   CREATE TABLE #MovimientoTemp (
 			 Id INT IDENTITY (1,1) 
 			,Nombre VARCHAR(128)
 			,TF VARCHAR(32)
@@ -116,7 +116,11 @@ BEGIN
 				DELETE FROM @NTCMTemp;
 				DELETE FROM @NTCATemp;
 				DELETE FROM @NTFTemp;
-				DELETE FROM @MovimientoTemp;
+				DELETE FROM #MovimientoTemp;
+
+				-- Reiniciar el IDENTITY al valor inicial
+				DBCC CHECKIDENT('#MovimientoTemp', RESEED, 0);
+
 				-- Se limpian las tablas temporales para que no tengan informacion repetida
 				--------------------------------------------------------------------------------------------------
 				INSERT INTO @THTemp (
@@ -178,7 +182,7 @@ BEGIN
 				FROM @XmlData.nodes('/root/fechaOperacion/NTF/NTF') AS T(X)
 				WHERE T.X.value('../../@Fecha', 'DATE') = @fechaActual;
 				--------------------------------------------------------------------------------------------------
-				INSERT INTO @MovimientoTemp  (
+				INSERT INTO #MovimientoTemp  (
 					Nombre 
 					,TF 
 					,FechaMovimiento 
@@ -417,7 +421,7 @@ BEGIN
 				IdMI = MotivoInvalidacion.Id
 				,EsValida=0
 				FROM TF
-				INNER JOIN @MovimientoTemp R ON TF.Codigo = R.TF
+				INNER JOIN #MovimientoTemp R ON TF.Codigo = R.TF
 				INNER JOIN MotivoInvalidacion ON R.Nombre LIKE '%' + MotivoInvalidacion.Nombre + '%'
 				WHERE R.Nombre='Recuperacion por Perdida' OR R.Nombre='Recuperacion por Robo'
 
@@ -427,12 +431,11 @@ BEGIN
 				,EsValida=0
 				FROM TF
 				WHERE ((YEAR(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= YEAR(TF.FechaCaducacion) AND
-				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) OR
-				TF.FechaCaducacion = '2023-08-01') 
+				MONTH(DATEFROMPARTS(YEAR(@fechaActual), MONTH(@fechaActual), 1)) >= MONTH(TF.FechaCaducacion)) ) 
 
 			--------------------------------------------------------------------------------------------------
 				-- Nuevos movimientos por renovacion
-				INSERT @MovimientoTemp (
+				INSERT #MovimientoTemp (
 				Nombre
 				,TF
 				,FechaMovimiento
@@ -454,7 +457,7 @@ BEGIN
 				WHERE (TF.IdMI=1 AND RN.Nombre = 'Reposicion de tarjeta de CTM')OR(TF.IdMI=2 AND RN.Nombre = 'Reposicion de tarjeta de CTM')OR(TF.IdMI=3 AND RN.Nombre = 'Cargo renovacion de TF de CTM');
 
 
-				INSERT @MovimientoTemp (
+				INSERT #MovimientoTemp (
 				Nombre
 				,TF
 				,FechaMovimiento
@@ -475,6 +478,22 @@ BEGIN
 				INNER JOIN TCTMXRNMM ON RN.Id = TCTMXRNMM.Id
 				WHERE (TF.IdMI=1 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=2 AND RN.Nombre = 'Reposicion de tarjeta de CTA')OR(TF.IdMI=3 AND RN.Nombre = 'Cargo renovacion de TF de CTA');
 				
+				INSERT MovimientoSospechoso(
+				Monto
+				,Fecha
+				,Descripcion
+				,IdTF
+				,IdCTM
+				)
+				SELECT
+				M.Monto
+				,@fecha
+				,(Select Nombre FROM MotivoInvalidacion WHERE MotivoInvalidacion.id=TF.IdMI)
+				,TF.Id
+				,TF.IdCT
+				FROM #MovimientoTemp M
+				INNER JOIN TF ON M.TF = TF.Codigo
+
 
 
 				DECLARE @NumeroTarjetaFisica VARCHAR(50);
@@ -485,7 +504,7 @@ BEGIN
 				NuevaTF.NumeroTarjetaFisica
 				,M.TF
 				FROM TF
-				INNER JOIN @MovimientoTemp M ON TF.Codigo = M.TF
+				INNER JOIN #MovimientoTemp M ON TF.Codigo = M.TF
 				INNER JOIN NuevaTF ON 0 = NuevaTF.Usado
 				WHERE (M.Nombre = 'Vencimiento' OR M.Nombre = 'Robo' OR M.Nombre = 'Perdida')
 					AND NuevaTF.Id NOT IN (SELECT Id FROM @ResultadosTemp)
@@ -496,9 +515,12 @@ BEGIN
 
 				WHILE @@FETCH_STATUS = 0
 				BEGIN
-					INSERT INTO @ResultadosTemp (CodigoNuevo, CodigoViejo)
-					VALUES (@NumeroTarjetaFisica, @TF);
-
+					INSERT INTO @ResultadosTemp (
+					CodigoNuevo
+					,CodigoViejo)
+					VALUES (
+					@NumeroTarjetaFisica
+					,@TF);
 					FETCH NEXT FROM MyCursor INTO @NumeroTarjetaFisica, @TF;
 				END;
 
@@ -511,6 +533,29 @@ BEGIN
 				INNER JOIN @ResultadosTemp temp ON NuevaTF.NumeroTarjetaFisica= temp.CodigoNuevo
 
 
+
+				DECLARE @IdMovimiento INT = 1;
+				DECLARE @NombreMovimiento VARCHAR(128) = '';
+
+				--SELECT Id FROM #MovimientoTemp M WHERE (M.Nombre='Recuperacion por Perdida' OR M.Nombre='Recuperacion por Robo' OR M.Nombre='Vencimiento')AND TF =(SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)
+
+
+				WHILE @IdMovimiento<= (SELECT MAX(Id) FROM #MovimientoTemp)
+				BEGIN
+				SET @NombreMovimiento= (SELECT Nombre FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)
+				 IF @NombreMovimiento='Recuperacion por Perdida' OR @NombreMovimiento='Recuperacion por Robo' OR @NombreMovimiento='Vencimiento'
+				BEGIN
+					UPDATE #MovimientoTemp
+					SET TF = R.CodigoNuevo
+					FROM #MovimientoTemp M
+					INNER JOIN @ResultadosTemp R ON M.TF = R.CodigoViejo
+					WHERE M.Id<@IdMovimiento AND M.TF= (SELECT TF FROM #MovimientoTemp WHERE #MovimientoTemp.Id=@IdMovimiento)
+					
+				END
+				SET @IdMovimiento=@IdMovimiento+1
+				END
+
+				
 				UPDATE TF
 				SET 
 				Codigo = R.CodigoNuevo
@@ -549,7 +594,7 @@ BEGIN
 				SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN EC ON TF.IdCT=EC.IdCTM
 					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
@@ -559,11 +604,11 @@ BEGIN
 				BEGIN
 					-- Obtener los valores correspondientes al movimiento actual
 	
-					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @CodigoTF = (SELECT TF.Codigo FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
 
 
 					-- Realizar la actualización
@@ -606,7 +651,7 @@ BEGIN
 					SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN EC ON TF.IdCT=EC.IdCTM
 					WHERE T.Id > @MovimientoID
@@ -631,7 +676,7 @@ BEGIN
 				SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN EC ON TF.IdCT=EC.IdCTM
 					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
@@ -641,11 +686,11 @@ BEGIN
 				BEGIN
 					-- Obtener los valores correspondientes al movimiento actual
 	
-					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @CodigoTF = (SELECT TF.Codigo FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
 
 
 					-- Realizar la actualización
@@ -688,7 +733,7 @@ BEGIN
 					SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN EC ON TF.IdCT=EC.IdCTM
 					WHERE T.Id > @MovimientoID
@@ -716,7 +761,7 @@ BEGIN
 				SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
 					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
@@ -728,11 +773,11 @@ BEGIN
 				BEGIN
 					-- Obtener los valores correspondientes al movimiento actual
 	
-					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @CodigoTF = (SELECT TF.Codigo FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
 
 
 					-- Realizar la actualización
@@ -775,7 +820,7 @@ BEGIN
 					SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
 					WHERE T.Id > @MovimientoID
@@ -800,7 +845,7 @@ BEGIN
 				SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
 					WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
@@ -812,11 +857,11 @@ BEGIN
 				BEGIN
 					-- Obtener los valores correspondientes al movimiento actual
 	
-					SET @CodigoTF = (SELECT TF.Codigo FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Monto = (SELECT T.Monto FROM @MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
-					SET @NombreMov = (SELECT TM.Nombre FROM @MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @CodigoTF = (SELECT TF.Codigo FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Monto = (SELECT T.Monto FROM #MovimientoTemp T INNER JOIN TF ON T.TF = TF.Codigo WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_ATM = (SELECT TM.Acumula_Operacion_ATM FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @Acumula_Operacion_Ventana = (SELECT TM.Acumula_Operacion_Ventana FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
+					SET @NombreMov = (SELECT TM.Nombre FROM #MovimientoTemp T INNER JOIN TM ON T.Nombre = TM.Nombre WHERE T.Id = @MovimientoID);
 
 
 					-- Realizar la actualización
@@ -859,7 +904,7 @@ BEGIN
 					SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
-					FROM @MovimientoTemp T
+					FROM #MovimientoTemp T
 					INNER JOIN TF ON T.TF = TF.Codigo
 					INNER JOIN SubEC ON TF.IdCT=SubEC.IdCTA
 					WHERE T.Id > @MovimientoID
