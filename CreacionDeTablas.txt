@@ -127,7 +127,7 @@ CREATE TABLE dbo.MovimientoSospechoso
   ,Fecha VARCHAR(32)
   ,Descripcion VARCHAR(32)
   ,IdTF INT  --FK TF
-  ,IdCTM INT --FK CTM
+  ,IdCT INT --FK CT
 );
 
 CREATE TABLE dbo.MotivoInvalidacion
@@ -326,8 +326,8 @@ ALTER TABLE [dbo].[MovimientoSospechoso] WITH CHECK ADD CONSTRAINT
 REFERENCES [dbo].[TF] ([id])
 
 ALTER TABLE [dbo].[MovimientoSospechoso] WITH CHECK ADD CONSTRAINT
-[FK_MovimientoSospechoso_CTM] FOREIGN KEY([IdCTM])
-REFERENCES [dbo].[CTM] ([id])
+[FK_MovimientoSospechoso_CT] FOREIGN KEY([IdCT])
+REFERENCES [dbo].[CT] ([id])
 
 -----------------------------------------------------------------------
 
