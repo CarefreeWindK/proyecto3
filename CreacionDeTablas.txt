@@ -27,12 +27,12 @@ CREATE TABLE dbo.TH
 CREATE TABLE dbo.CTM
 (
     Id INT NOT NULL PRIMARY KEY  --
-	, Saldo INT
-	, PagoMinimo INT
-	, SaldoCorteEC INT
+	, Saldo MONEY
+	, PagoMinimo MONEY
+	, SaldoCorteEC MONEY
 	, FechaCorte DATE
 	, LastECId INT
-	, SaldoInteresesCorrientes INT
+	, SaldoInteresesCorrientes MONEY
 	, IdTCTM INT  -- FK TCTM
 );
 
