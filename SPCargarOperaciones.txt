@@ -1,6 +1,6 @@
 USE [bd2]
 GO
-/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 19/6/2023 16:20:18 ******/
+/****** Object:  StoredProcedure [dbo].[CargarOperacionesXML]    Script Date: 19/6/2023 17:45:55 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -775,20 +775,7 @@ BEGIN
 						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
 				END;
 
-				--SELECT *
-				--	FROM EC
-				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
-				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
-				--	INNER JOIN TM ON T.Nombre = TM.Nombre
-				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
-
 			----------------------------------------------------------------------------------------------------
-				--SELECT
-				--	*
-				--	FROM @MovimientoTemp T
-				--	INNER JOIN TF ON T.TF = TF.Codigo
-				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
-				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
 
 				SET @MovimientoID = (
 					SELECT
@@ -857,23 +844,7 @@ BEGIN
 						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Credito');
 				END;
 
-				--SELECT *
-				--	FROM EC
-				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
-				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
-				--	INNER JOIN TM ON T.Nombre = TM.Nombre
-				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-				--SELECT
-				--	*
-				--	FROM @MovimientoTemp T
-				--	INNER JOIN TF ON T.TF = TF.Codigo
-				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
-				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
 
 				SET @MovimientoID = (
 					SELECT
@@ -949,21 +920,7 @@ BEGIN
 						AND (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito');
 				END;
 
-				--SELECT *
-				--	FROM EC
-				--	INNER JOIN TF ON EC.IdCTM = TF.IdCT
-				--	INNER JOIN @MovimientoTemp T ON TF.Codigo  = T.TF
-				--	INNER JOIN TM ON T.Nombre = TM.Nombre
-				--	WHERE (IdCTM = (SELECT IdCT FROM TF WHERE Codigo = @CodigoTF)) AND (TM.Acumula_Operacion_ATM = 'SI');
-
 			----------------------------------------------------------------------------------------------------
-				--SELECT
-				--	*
-				--	FROM @MovimientoTemp T
-				--	INNER JOIN TF ON T.TF = TF.Codigo
-				--	INNER JOIN EC ON TF.IdCT=EC.IdCTM
-				--	WHERE (SELECT Accion FROM TM WHERE TM.Nombre = T.Nombre) = 'Debito' 
-
 				SET @MovimientoID = (
 					SELECT
 					MIN(T.Id)
@@ -1087,6 +1044,23 @@ BEGIN
 			
 
 		-----Fecha de Corte-----
+
+		DECLARE @VariableContador INT;
+		SET @VariableContador = 1;
+
+		WHILE @VariableContador <= (SELECT MAX(Id) FROM CTM)
+		BEGIN
+			-- Bloque de código a ejecutar mientras se cumpla la condición
+			-- ...
+			IF @fechaActual=(SELECT FechaCorte FROM CTM WHERE CTM.Id=@VariableContador)
+			BEGIN
+				-- Bloque de código a ejecutar si la condición es verdadera
+				
+			END
+			-- Incrementar el contador
+			SET @VariableContador = @VariableContador + 1;
+		END
+
 		SET @fechaActual = DATEADD(DAY, 1, @fechaActual);
 
 		END
